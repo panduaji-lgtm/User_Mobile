@@ -676,123 +676,233 @@ class _TiketScreenState extends State<TiketScreen> {
           _buildCardSection(
             cardBg,
             borderLight,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.qr_code_2, size: 20, color: textDark),
-                      SizedBox(width: 8),
-                      Text(
-                        'Pembayaran via QRIS',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: textDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Otomatis',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Scan menggunakan GoPay, OVO, ShopeePay, DANA, atau M-Banking',
-                style: TextStyle(fontSize: 10, color: textMuted),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: Container(
-                  width: 220,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: borderLight),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE5E7EB),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+            children: _paymentMethod == 'QRIS'
+                ? [
+                    // ── HEADER QRIS ──────────────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            Icon(Icons.qr_code, size: 60, color: textMuted),
-                            SizedBox(height: 8),
+                            Icon(Icons.qr_code_2, size: 20, color: textDark),
+                            SizedBox(width: 8),
                             Text(
-                              'QR CODE QRIS',
+                              'Pembayaran via QRIS',
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: textMuted,
+                                color: textDark,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'NMID: ID10202688910',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: textDark,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Otomatis',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Scan menggunakan GoPay, OVO, ShopeePay, DANA, atau M-Banking',
+                      style: TextStyle(fontSize: 10, color: textMuted),
+                    ),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Container(
+                        width: 220,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: borderLight),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5E7EB),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.qr_code, size: 60, color: textMuted),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'QR CODE QRIS',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'NMID: ID10202688910',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: textDark,
+                              ),
+                            ),
+                            Text(
+                              'Museum Brawijaya Official',
+                              style: TextStyle(fontSize: 9, color: textMuted),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'Museum Brawijaya Official',
-                        style: TextStyle(fontSize: 9, color: textMuted),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDetailInfoRow('Kode Pesanan', '#MBW-2026-9941'),
+                    _buildDetailInfoRow(
+                      'Total Tagihan',
+                      'Rp 10.000',
+                      isBoldPrice: true,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('Cek Status Pembayaran'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: darkGreen,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildDetailInfoRow('Kode Pesanan', '#MBW-2026-9941'),
-              _buildDetailInfoRow(
-                'Total Tagihan',
-                'Rp 10.000',
-                isBoldPrice: true,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Cek Status Pembayaran'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: darkGreen,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ],
+                    ),
+                  ]
+                : [
+                    // ── HEADER TRANSFER BANK ─────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.account_balance, size: 20, color: textDark),
+                            SizedBox(width: 8),
+                            Text(
+                              'Transfer Bank',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: textDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF8E1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Manual',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Pilih salah satu bank dan transfer sesuai nominal tagihan',
+                      style: TextStyle(fontSize: 10, color: textMuted),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── KARTU BCA ────────────────────────────────────────
+                    _buildBankCard(
+                      bankName: 'BCA',
+                      accountNumber: '1234 5678 9012',
+                      accountName: 'Museum Brawijaya',
+                      bankColor: const Color(0xFF005BAC),
+                      logoIcon: Icons.account_balance,
+                      cardBg: cardBg,
+                      borderLight: borderLight,
+                      textDark: textDark,
+                      textMuted: textMuted,
+                    ),
+                    const SizedBox(height: 10),
+
+                    // ── KARTU MANDIRI ────────────────────────────────────
+                    _buildBankCard(
+                      bankName: 'Mandiri',
+                      accountNumber: '1400 0012 3456 789',
+                      accountName: 'Museum Brawijaya',
+                      bankColor: const Color(0xFF003087),
+                      logoIcon: Icons.account_balance,
+                      cardBg: cardBg,
+                      borderLight: borderLight,
+                      textDark: textDark,
+                      textMuted: textMuted,
+                    ),
+                    const SizedBox(height: 10),
+
+                    // ── KARTU BNI ─────────────────────────────────────────
+                    _buildBankCard(
+                      bankName: 'BNI',
+                      accountNumber: '0123 4567 89',
+                      accountName: 'Museum Brawijaya',
+                      bankColor: const Color(0xFFFF6200),
+                      logoIcon: Icons.account_balance,
+                      cardBg: cardBg,
+                      borderLight: borderLight,
+                      textDark: textDark,
+                      textMuted: textMuted,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDetailInfoRow('Kode Pesanan', '#MBW-2026-9941'),
+                    _buildDetailInfoRow(
+                      'Total Tagihan',
+                      'Rp 10.000',
+                      isBoldPrice: true,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.check_circle_outline, size: 16),
+                      label: const Text('Konfirmasi Transfer'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: darkGreen,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
           ),
           const SizedBox(height: 20),
           Container(
@@ -1130,6 +1240,132 @@ class _TiketScreenState extends State<TiketScreen> {
               fontSize: 11,
               fontWeight: FontWeight.bold,
               color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBankCard({
+    required String bankName,
+    required String accountNumber,
+    required String accountName,
+    required Color bankColor,
+    required IconData logoIcon,
+    required Color cardBg,
+    required Color borderLight,
+    required Color textDark,
+    required Color textMuted,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // ── Header warna bank ──────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: bankColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(logoIcon, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Bank $bankName',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Isi: nomor rekening & nama ─────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nomor Rekening',
+                      style: TextStyle(fontSize: 9, color: textMuted),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      accountNumber,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'a.n. $accountName',
+                      style: TextStyle(fontSize: 10, color: textMuted),
+                    ),
+                  ],
+                ),
+                // ── Tombol salin ───────────────────────────────────
+                GestureDetector(
+                  onTap: () {
+                    // Salin ke clipboard
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: bankColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: bankColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.copy, size: 12, color: bankColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Salin',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: bankColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

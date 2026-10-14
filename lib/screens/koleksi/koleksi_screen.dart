@@ -19,6 +19,14 @@ class KoleksiScreen extends StatefulWidget {
 class _KoleksiScreenState extends State<KoleksiScreen> {
   int _selectedCategoryIndex = 0;
   final List<String> _categories = ['Semua', 'Senjata', 'Kendaraan'];
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   final List<Map<String, String>> _allKoleksiItems = const [
     {
@@ -89,6 +97,16 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
     } else {
       filteredItems = _allKoleksiItems
           .where((item) => item['category'] == selectedCategory)
+          .toList();
+    }
+
+    // Filter berdasarkan search query
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filteredItems = filteredItems
+          .where((item) =>
+              (item['title'] ?? '').toLowerCase().contains(query) ||
+              (item['subtitle'] ?? '').toLowerCase().contains(query))
           .toList();
     }
 
@@ -221,6 +239,12 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
 
                       // Search Bar Dinamis
                       TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
                         decoration: InputDecoration(
                           hintText: searchHint,
                           hintStyle: const TextStyle(
@@ -232,6 +256,21 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                             color: textMuted,
                             size: 20,
                           ),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.close,
+                                    color: textMuted,
+                                    size: 18,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchQuery = '';
+                                      _searchController.clear();
+                                    });
+                                  },
+                                )
+                              : null,
                           contentPadding: const EdgeInsets.symmetric(
                             vertical: 16,
                           ),
@@ -244,6 +283,13 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                             borderSide: const BorderSide(color: borderLight),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF3F5243),
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -295,8 +341,67 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                 // Grid List Koleksi Terfilter
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                  child: GridView.builder(
-                    key: ValueKey(selectedCategory),
+                  child: filteredItems.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 48.0),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.search_off,
+                                  size: 56,
+                                  color: const Color(0xFF727A71).withOpacity(0.5),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Koleksi tidak ditemukan',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2C322B),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Coba kata kunci lain atau hapus pencarian',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF727A71),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _searchQuery = '';
+                                      _searchController.clear();
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF3F5243),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Text(
+                                      'Hapus Pencarian',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : GridView.builder(
+                    key: ValueKey('$selectedCategory-$_searchQuery'),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
