@@ -119,7 +119,7 @@ class AppTheme {
         selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         type: BottomNavigationBarType.fixed,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

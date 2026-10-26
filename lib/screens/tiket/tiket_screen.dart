@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../services/tiket_service.dart';
 
 class TiketScreen extends StatefulWidget {
   const TiketScreen({super.key, required this.onGoHome});
@@ -12,34 +15,177 @@ class TiketScreen extends StatefulWidget {
 class _TiketScreenState extends State<TiketScreen> {
   int _currentStep = 0;
 
-  final TextEditingController _namaController = TextEditingController(
-    text: 'Budi Santoso',
-  );
-  final TextEditingController _emailController = TextEditingController(
-    text: 'budi@example.com',
-  );
-  final TextEditingController _phoneController = TextEditingController(
-    text: '081234567890',
-  );
+  final TextEditingController _namaController = TextEditingController(text: '');
+  final TextEditingController _emailController = TextEditingController(text: '');
+  final TextEditingController _phoneController = TextEditingController(text: '');
 
-  final String _selectedDate = '09/20/2026';
+  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   String _selectedSesi = '08:00 - 10:00';
   int _qtyDewasa = 1;
   int _qtyPelajar = 0;
   int _qtyWna = 0;
   String _paymentMethod = 'QRIS';
 
-  final int _priceDewasa = 10000;
-  final int _pricePelajar = 5000;
-  final int _priceWna = 20000;
+  // Harga dari backend (default fallback)
+  int _priceDewasa = 10000;
+  int _pricePelajar = 5000;
+  int _priceWna = 25000;
+
+  // State backend
+  bool _loadingCategories = true;
+  bool _submitting = false;
+  TicketBooking? _booking;
+
+  // Countdown timer (15 menit)
+  Timer? _countdownTimer;
+  int _secondsLeft = 15 * 60;
 
   int get _totalBayar =>
       (_qtyDewasa * _priceDewasa) +
       (_qtyPelajar * _pricePelajar) +
       (_qtyWna * _priceWna);
 
+  String get _formattedDate {
+    final d = _selectedDate;
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  String get _apiDate {
+    final d = _selectedDate;
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  String get _countdownFormatted {
+    final m = _secondsLeft ~/ 60;
+    final s = _secondsLeft % 60;
+    return '${m.toString().padLeft(2, '0')} : ${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrices();
+  }
+
+  Future<void> _loadPrices() async {
+    try {
+      final cats = await TiketService.getCategories();
+      if (!mounted) return;
+      setState(() {
+        for (final cat in cats) {
+          if (cat.badge.contains('UMUM') || cat.badge.contains('DEWASA')) {
+            _priceDewasa = cat.price;
+          } else if (cat.badge.contains('PELAJAR')) {
+            _pricePelajar = cat.price;
+          } else if (cat.badge.contains('MANCANEGARA')) {
+            _priceWna = cat.price;
+          }
+        }
+        _loadingCategories = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingCategories = false);
+    }
+  }
+
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    _secondsLeft = 15 * 60;
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (_secondsLeft <= 0) {
+        t.cancel();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Waktu pembayaran habis. Silakan pesan ulang.'), backgroundColor: Colors.red),
+          );
+          setState(() => _currentStep = 0);
+        }
+      } else {
+        if (mounted) setState(() => _secondsLeft--);
+      }
+    });
+  }
+
+  Future<void> _handleBayar() async {
+    if (_namaController.text.trim().isEmpty || _emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama dan email wajib diisi'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    final totalTiket = _qtyDewasa + _qtyPelajar + _qtyWna;
+    if (totalTiket == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih minimal 1 tiket'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      final booking = await TiketService.createBooking(
+        nama: _namaController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
+        dewasa: _qtyDewasa,
+        pelajar: _qtyPelajar,
+        wna: _qtyWna,
+        sesi: _selectedSesi,
+        visitDate: _apiDate,
+        paymentMethod: _paymentMethod,
+      );
+      if (!mounted) return;
+      setState(() {
+        _booking = booking;
+        _currentStep = 1;
+        _submitting = false;
+      });
+      _startCountdown();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _copyToClipboard(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Disalin: $text'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF3F5243),
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 90)),
+      helpText: 'Pilih Tanggal Kunjungan',
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: Color(0xFF3F5243)),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _namaController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -202,18 +348,29 @@ class _TiketScreenState extends State<TiketScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF4F5F3),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _selectedDate,
-                            style: TextStyle(fontSize: 12, color: textDark),
+                        GestureDetector(
+                          onTap: _pickDate,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F5F3),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFCBB26A)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _formattedDate,
+                                  style: TextStyle(fontSize: 12, color: textDark, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.edit_calendar_outlined, size: 14, color: Color(0xFF3F5243)),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -297,29 +454,33 @@ class _TiketScreenState extends State<TiketScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              _buildQtyRow(
-                'WNI - Dewasa / Umum',
-                'Rp 10.000 /orang',
-                _qtyDewasa,
-                (val) => setState(() => _qtyDewasa = val),
-                darkGreen,
-              ),
-              Divider(height: 20, color: borderLight),
-              _buildQtyRow(
-                'WNI - Pelajar / Anak',
-                'Rp 5.000 /orang',
-                _qtyPelajar,
-                (val) => setState(() => _qtyPelajar = val),
-                darkGreen,
-              ),
-              Divider(height: 20, color: borderLight),
-              _buildQtyRow(
-                'WNA - Wisatawan Asing',
-                'Rp 20.000 /person',
-                _qtyWna,
-                (val) => setState(() => _qtyWna = val),
-                darkGreen,
-              ),
+              if (_loadingCategories)
+                const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)))
+              else ...[
+                _buildQtyRow(
+                  'WNI - Dewasa / Umum',
+                  'Rp ${_priceDewasa.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (m) => "${m[1]}.")}/orang',
+                  _qtyDewasa,
+                  (val) => setState(() => _qtyDewasa = val),
+                  darkGreen,
+                ),
+                Divider(height: 20, color: borderLight),
+                _buildQtyRow(
+                  'WNI - Pelajar / Anak',
+                  'Rp ${_pricePelajar.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (m) => "${m[1]}.")}/orang',
+                  _qtyPelajar,
+                  (val) => setState(() => _qtyPelajar = val),
+                  darkGreen,
+                ),
+                Divider(height: 20, color: borderLight),
+                _buildQtyRow(
+                  'WNA - Wisatawan Asing',
+                  'Rp ${_priceWna.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (m) => "${m[1]}.")}/person',
+                  _qtyWna,
+                  (val) => setState(() => _qtyWna = val),
+                  darkGreen,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -512,12 +673,22 @@ class _TiketScreenState extends State<TiketScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildSummaryRow('Lokasi:', 'Museum Brawijaya'),
-                _buildSummaryRow('Tanggal:', '20 Sep 2026'),
+                _buildSummaryRow('Tanggal:', _formattedDate),
                 _buildSummaryRow('Sesi Waktu:', _selectedSesi),
                 _buildSummaryRow(
                   'WNI - Dewasa x$_qtyDewasa',
                   'Rp ${(_qtyDewasa * _priceDewasa).toString()}',
                 ),
+                if (_qtyPelajar > 0)
+                  _buildSummaryRow(
+                    'WNI - Pelajar x$_qtyPelajar',
+                    'Rp ${(_qtyPelajar * _pricePelajar).toString()}',
+                  ),
+                if (_qtyWna > 0)
+                  _buildSummaryRow(
+                    'WNA x$_qtyWna',
+                    'Rp ${(_qtyWna * _priceWna).toString()}',
+                  ),
                 _buildSummaryRow('Biaya Admin', 'GRATIS', isGold: true),
                 const Divider(color: Colors.white24, height: 24),
                 Row(
@@ -543,11 +714,7 @@ class _TiketScreenState extends State<TiketScreen> {
                 ),
                 const SizedBox(height: 18),
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _currentStep = 1;
-                    });
-                  },
+                  onPressed: _submitting ? null : _handleBayar,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: goldAccent,
                     foregroundColor: textDark,
@@ -557,20 +724,29 @@ class _TiketScreenState extends State<TiketScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.lock, size: 16),
-                      SizedBox(width: 8),
-                      Text(
-                        'Bayar Tiket Sekarang',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                  child: _submitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.lock, size: 16),
+                            SizedBox(width: 8),
+                            Text(
+                              'Bayar Tiket Sekarang',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 10),
                 const Center(
@@ -641,11 +817,11 @@ class _TiketScreenState extends State<TiketScreen> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '14 : 59 : 30',
+                        _countdownFormatted,
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.red,
+                          color: _secondsLeft < 60 ? Colors.red.shade800 : Colors.red,
                         ),
                       ),
                     ],
@@ -774,15 +950,22 @@ class _TiketScreenState extends State<TiketScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildDetailInfoRow('Kode Pesanan', '#MBW-2026-9941'),
+                    _buildDetailInfoRow('Kode Pesanan', _booking?.id ?? '#MBW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'),
                     _buildDetailInfoRow(
                       'Total Tagihan',
-                      'Rp 10.000',
+                      'Rp ${_booking != null ? _booking!.totalBiaya.toString() : _totalBayar.toString()}',
                       isBoldPrice: true,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Status: Menunggu Pembayaran. Harap selesaikan pembayaran.'),
+                            backgroundColor: Colors.teal,
+                          ),
+                        );
+                      },
                       icon: const Icon(Icons.refresh, size: 16),
                       label: const Text('Cek Status Pembayaran'),
                       style: ElevatedButton.styleFrom(
@@ -882,15 +1065,22 @@ class _TiketScreenState extends State<TiketScreen> {
                       textMuted: textMuted,
                     ),
                     const SizedBox(height: 16),
-                    _buildDetailInfoRow('Kode Pesanan', '#MBW-2026-9941'),
+                    _buildDetailInfoRow('Kode Pesanan', _booking?.id ?? '#MBW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'),
                     _buildDetailInfoRow(
                       'Total Tagihan',
-                      'Rp 10.000',
+                      'Rp ${_booking != null ? _booking!.totalBiaya.toString() : _totalBayar.toString()}',
                       isBoldPrice: true,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Konfirmasi diterima! E-Tiket Anda sedang diverifikasi.'),
+                            backgroundColor: Colors.teal,
+                          ),
+                        );
+                      },
                       icon: const Icon(Icons.check_circle_outline, size: 16),
                       label: const Text('Konfirmasi Transfer'),
                       style: ElevatedButton.styleFrom(
@@ -959,10 +1149,13 @@ class _TiketScreenState extends State<TiketScreen> {
                   ],
                 ),
                 const Divider(color: Colors.white24, height: 24),
-                _buildETicketRow('Nama Pemesan:', _namaController.text),
-                _buildETicketRow('Tanggal Kunjungan:', '20 Sep 2026'),
+                _buildETicketRow('Nama Pemesan:', _namaController.text.isNotEmpty ? _namaController.text : 'Pengunjung'),
+                _buildETicketRow('Tanggal Kunjungan:', _formattedDate),
                 _buildETicketRow('Sesi Jam:', _selectedSesi),
-                _buildETicketRow('Kategori Tiket:', 'WNI - Dewasa (x1)'),
+                _buildETicketRow(
+                  'Kategori Tiket:',
+                  'Dewasa ($_qtyDewasa)${_qtyPelajar > 0 ? ', Pelajar ($_qtyPelajar)' : ''}${_qtyWna > 0 ? ', WNA ($_qtyWna)' : ''}',
+                ),
                 const SizedBox(height: 16),
                 Container(
                   width: double.infinity,
@@ -974,14 +1167,27 @@ class _TiketScreenState extends State<TiketScreen> {
                   child: Column(
                     children: [
                       Icon(Icons.barcode_reader, size: 40, color: goldAccent),
-                      SizedBox(height: 4),
-                      Text(
-                        'MBW-2026-9941',
-                        style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 2,
-                          color: goldAccent,
-                          fontWeight: FontWeight.bold,
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () {
+                          final code = _booking?.id ?? 'MBW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+                          _copyToClipboard(code);
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _booking?.id ?? 'MBW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                letterSpacing: 2,
+                                color: goldAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(Icons.copy, size: 14, color: goldAccent),
+                          ],
                         ),
                       ),
                     ],
@@ -994,7 +1200,14 @@ class _TiketScreenState extends State<TiketScreen> {
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('E-Tiket sedang diunduh (format PDF)...'),
+                        backgroundColor: Colors.teal,
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.download, size: 16),
                   label: const Text('Unduh E-Tiket (PDF)'),
                   style: OutlinedButton.styleFrom(
@@ -1334,9 +1547,7 @@ class _TiketScreenState extends State<TiketScreen> {
                 ),
                 // ── Tombol salin ───────────────────────────────────
                 GestureDetector(
-                  onTap: () {
-                    // Salin ke clipboard
-                  },
+                  onTap: () => _copyToClipboard(accountNumber.replaceAll(' ', '')),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,

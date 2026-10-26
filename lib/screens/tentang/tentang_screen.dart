@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/ulasan_service.dart';
 
 // Model sederhana untuk satu ulasan
 class _ReviewData {
@@ -71,6 +72,39 @@ class _TentangScreenState extends State<TentangScreen> {
     ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchReviewsFromBackend();
+  }
+
+  Future<void> _fetchReviewsFromBackend() async {
+    try {
+      final res = await UlasanService.getAll(limit: 20);
+      if (!mounted) return;
+      if (res.items.isNotEmpty) {
+        setState(() {
+          _reviews.clear();
+          for (var i = 0; i < res.items.length; i++) {
+            final item = res.items[i];
+            final initial = item.nama.isNotEmpty ? item.nama[0].toUpperCase() : '?';
+            final color = _avatarColors[i % _avatarColors.length];
+            _reviews.add(
+              _ReviewData(
+                name: item.nama,
+                date: item.createdAt.length >= 10 ? item.createdAt.substring(0, 10) : item.createdAt,
+                rating: item.rating,
+                comment: item.comment,
+                avatarInitial: initial,
+                avatarColor: color,
+              ),
+            );
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
   final _formKey           = GlobalKey<FormState>();
   final _nameController    = TextEditingController();
   final _commentController = TextEditingController();
@@ -120,11 +154,21 @@ class _TentangScreenState extends State<TentangScreen> {
       return;
     }
     setState(() => _isSubmitting = true);
-    await Future.delayed(const Duration(milliseconds: 600));
 
     final name    = _nameController.text.trim();
+    final comment = _commentController.text.trim();
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final color   = _avatarColors[_reviews.length % _avatarColors.length];
+
+    try {
+      await UlasanService.submitReview(
+        nama: name,
+        rating: _selectedRating,
+        comment: comment,
+      );
+    } catch (_) {
+      // Masih fallback simpan lokal jika backend offline
+    }
 
     setState(() {
       _reviews.insert(
@@ -133,7 +177,7 @@ class _TentangScreenState extends State<TentangScreen> {
           name:          name,
           date:          _formattedToday(),
           rating:        _selectedRating,
-          comment:       _commentController.text.trim(),
+          comment:       comment,
           avatarInitial: initial,
           avatarColor:   color,
         ),
