@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../profile/edit_profile_screen.dart';
+import '../auth/login_screen.dart';
+import '../../services/auth_service.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
@@ -40,30 +43,147 @@ class HomeScreen extends StatelessWidget {
                     vertical: 16.0,
                   ),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: darkGreen,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.account_balance,
-                          color: goldAccent,
-                          size: 18,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: darkGreen,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.account_balance,
+                              color: goldAccent,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'MUSEUM BRAWIJAYA',
+                            style: TextStyle(
+                              fontFamily: 'PlayfairDisplay',
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                              color: textDark,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'MUSEUM BRAWIJAYA',
-                        style: TextStyle(
-                          fontFamily: 'PlayfairDisplay',
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          color: textDark,
+                      // Logo Profil di Kanan Atas dengan Menu Popup
+                      PopupMenuButton<String>(
+                        icon: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: darkGreen,
+                            size: 20,
+                          ),
                         ),
+                        offset: const Offset(0, 45),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        onSelected: (value) {
+                          if (value == 'edit_profile') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EditProfileScreen(),
+                              ),
+                            );
+                          } else if (value == 'logout') {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                title: const Text('Konfirmasi Logout', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                content: const Text('Apakah Anda yakin ingin keluar dari akun?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Batal', style: TextStyle(color: textMuted)),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red.shade700,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      AuthService.logout();
+                                      Navigator.pushAndRemoveUntil(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                        (route) => false,
+                                      );
+                                    },
+                                    child: const Text('Keluar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                        itemBuilder: (context) {
+                          final user = AuthService.currentUser;
+                          return [
+                            PopupMenuItem(
+                              enabled: false,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user?.nama ?? 'Pengunjung',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textDark),
+                                  ),
+                                  Text(
+                                    user?.email ?? 'Akun Pengguna',
+                                    style: const TextStyle(fontSize: 11, color: textMuted),
+                                  ),
+                                  const Divider(),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'edit_profile',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit_outlined, size: 18, color: textDark),
+                                  SizedBox(width: 10),
+                                  Text('Edit Profil', style: TextStyle(fontSize: 13, color: textDark)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'logout',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.logout, size: 18, color: Colors.red),
+                                  SizedBox(width: 10),
+                                  Text('Log Out', style: TextStyle(fontSize: 13, color: Colors.red)),
+                                ],
+                              ),
+                            ),
+                          ];
+                        },
                       ),
                     ],
                   ),

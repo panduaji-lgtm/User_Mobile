@@ -18,6 +18,28 @@ class _TiketScreenState extends State<TiketScreen> {
   final TextEditingController _namaController = TextEditingController(text: '');
   final TextEditingController _emailController = TextEditingController(text: '');
   final TextEditingController _phoneController = TextEditingController(text: '');
+  String _selectedCountryCode = '+62';
+  String _selectedCountryFlag = '🇮🇩';
+
+  final List<Map<String, String>> _countryCodes = [
+    {'name': 'Indonesia', 'code': '+62', 'flag': '🇮🇩'},
+    {'name': 'Malaysia', 'code': '+60', 'flag': '🇲🇾'},
+    {'name': 'Singapura', 'code': '+65', 'flag': '🇸🇬'},
+    {'name': 'Australia', 'code': '+61', 'flag': '🇦🇺'},
+    {'name': 'Jepang', 'code': '+81', 'flag': '🇯🇵'},
+    {'name': 'Korea Selatan', 'code': '+82', 'flag': '🇰🇷'},
+    {'name': 'Amerika Serikat', 'code': '+1', 'flag': '🇺🇸'},
+    {'name': 'Inggris', 'code': '+44', 'flag': '🇬🇧'},
+    {'name': 'Jerman', 'code': '+49', 'flag': '🇩🇪'},
+    {'name': 'Belanda', 'code': '+31', 'flag': '🇳🇱'},
+    {'name': 'Tiongkok', 'code': '+86', 'flag': '🇨🇳'},
+    {'name': 'Arab Saudi', 'code': '+966', 'flag': '🇸🇦'},
+    {'name': 'Thailand', 'code': '+66', 'flag': '🇹🇭'},
+    {'name': 'Filipina', 'code': '+63', 'flag': '🇵🇭'},
+    {'name': 'Vietnam', 'code': '+84', 'flag': '🇻🇳'},
+    {'name': 'India', 'code': '+91', 'flag': '🇮🇳'},
+    {'name': 'Prancis', 'code': '+33', 'flag': '🇫🇷'},
+  ];
 
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   String _selectedSesi = '08:00 - 10:00';
@@ -40,10 +62,32 @@ class _TiketScreenState extends State<TiketScreen> {
   Timer? _countdownTimer;
   int _secondsLeft = 15 * 60;
 
-  int get _totalBayar =>
-      (_qtyDewasa * _priceDewasa) +
-      (_qtyPelajar * _pricePelajar) +
-      (_qtyWna * _priceWna);
+  // Deteksi Wisatawan Mancanegara berdasarkan kode negara nomor telepon
+  bool get _isMancanegara {
+    if (_selectedCountryCode != '+62') return true;
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) return false;
+    if (phone.startsWith('+62') || phone.startsWith('08') || phone.startsWith('62')) {
+      return false;
+    }
+    return false;
+  }
+
+  String get _fullPhoneNumber {
+    final num = _phoneController.text.trim();
+    if (num.isEmpty) return '';
+    if (num.startsWith('+')) return num;
+    final cleanNum = num.startsWith('0') ? num.substring(1) : num;
+    return '$_selectedCountryCode$cleanNum';
+  }
+
+  int get _totalBayar {
+    if (_isMancanegara) {
+      return _qtyWna * _priceWna;
+    } else {
+      return (_qtyDewasa * _priceDewasa) + (_qtyPelajar * _pricePelajar);
+    }
+  }
 
   String get _formattedDate {
     final d = _selectedDate;
@@ -64,6 +108,9 @@ class _TiketScreenState extends State<TiketScreen> {
   @override
   void initState() {
     super.initState();
+    _phoneController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadPrices();
   }
 
@@ -113,7 +160,8 @@ class _TiketScreenState extends State<TiketScreen> {
       );
       return;
     }
-    final totalTiket = _qtyDewasa + _qtyPelajar + _qtyWna;
+
+    final totalTiket = _isMancanegara ? _qtyWna : (_qtyDewasa + _qtyPelajar);
     if (totalTiket == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pilih minimal 1 tiket'), backgroundColor: Colors.red),
@@ -126,13 +174,14 @@ class _TiketScreenState extends State<TiketScreen> {
       final booking = await TiketService.createBooking(
         nama: _namaController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
-        dewasa: _qtyDewasa,
-        pelajar: _qtyPelajar,
-        wna: _qtyWna,
+        phone: _fullPhoneNumber.isNotEmpty ? _fullPhoneNumber : null,
+        dewasa: _isMancanegara ? 0 : _qtyDewasa,
+        pelajar: _isMancanegara ? 0 : _qtyPelajar,
+        wna: _isMancanegara ? _qtyWna : 0,
         sesi: _selectedSesi,
         visitDate: _apiDate,
         paymentMethod: _paymentMethod,
+        isMancanegara: _isMancanegara ? 1 : 0,
       );
       if (!mounted) return;
       setState(() {
@@ -310,20 +359,93 @@ class _TiketScreenState extends State<TiketScreen> {
             style: TextStyle(fontSize: 12, color: textMuted),
           ),
           const SizedBox(height: 20),
+          // 1. DATA DIRI PEMESAN
           _buildCardSection(
             cardBg,
             borderLight,
             children: [
               Row(
                 children: [
-                  Icon(
+                  const Icon(
+                    Icons.person_outline,
+                    size: 18,
+                    color: Color(0xFFCBB26A),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '1. Data Diri Pemesan',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: textDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _buildInputLabelField(
+                'Nama Lengkap (Sesuai KTP/Paspor)',
+                _namaController,
+              ),
+              const SizedBox(height: 12),
+              _buildInputLabelField(
+                'Email (Pengiriman E-Tiket & QR Code)',
+                _emailController,
+              ),
+              const SizedBox(height: 12),
+              _buildPhoneInputField(),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _isMancanegara ? const Color(0xFFF3E8FF) : const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isMancanegara ? const Color(0xFFC084FC) : const Color(0xFF6EE7B7),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isMancanegara ? Icons.public : Icons.flag,
+                      size: 16,
+                      color: _isMancanegara ? const Color(0xFF7E22CE) : const Color(0xFF047857),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _isMancanegara
+                            ? 'Terdeteksi: Wisatawan Mancanegara (International Tourist). Harga dan metode pembayaran internasional diterapkan.'
+                            : 'Terdeteksi: Wisatawan Dalam Negeri (Domestik). Tiket reguler WNI diterapkan.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _isMancanegara ? const Color(0xFF7E22CE) : const Color(0xFF047857),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 2. TANGGAL & WAKTU KUNJUNGAN
+          _buildCardSection(
+            cardBg,
+            borderLight,
+            children: [
+              Row(
+                children: [
+                  const Icon(
                     Icons.calendar_today_outlined,
                     size: 18,
                     color: Color(0xFFCBB26A),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    '1. Tanggal & Waktu Kunjungan',
+                    '2. Tanggal & Waktu Kunjungan',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -431,20 +553,22 @@ class _TiketScreenState extends State<TiketScreen> {
             ],
           ),
           const SizedBox(height: 16),
+
+          // 3. PILIH KATEGORI TIKET (Dinamis WNI / WNA)
           _buildCardSection(
             cardBg,
             borderLight,
             children: [
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.confirmation_number_outlined,
                     size: 18,
                     color: Color(0xFFCBB26A),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
-                    '2. Pilih Kategori Tiket',
+                    '3. Pilih Kategori Tiket',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -456,7 +580,22 @@ class _TiketScreenState extends State<TiketScreen> {
               const SizedBox(height: 16),
               if (_loadingCategories)
                 const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)))
-              else ...[
+              else if (_isMancanegara) ...[
+                // Khusus Wisatawan Mancanegara
+                _buildQtyRow(
+                  'Wisatawan Asing (International Tourist)',
+                  'Rp ${_priceWna.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (m) => "${m[1]}.")}/person',
+                  _qtyWna,
+                  (val) => setState(() => _qtyWna = val),
+                  darkGreen,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Kategori khusus wisatawan dari luar negeri.',
+                  style: TextStyle(fontSize: 10, color: textMuted, fontStyle: FontStyle.italic),
+                ),
+              ] else ...[
+                // Khusus Wisatawan Dalam Negeri (Domestik)
                 _buildQtyRow(
                   'WNI - Dewasa / Umum',
                   'Rp ${_priceDewasa.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (m) => "${m[1]}.")}/orang',
@@ -472,67 +611,24 @@ class _TiketScreenState extends State<TiketScreen> {
                   (val) => setState(() => _qtyPelajar = val),
                   darkGreen,
                 ),
-                Divider(height: 20, color: borderLight),
-                _buildQtyRow(
-                  'WNA - Wisatawan Asing',
-                  'Rp ${_priceWna.toStringAsFixed(0).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (m) => "${m[1]}.")}/person',
-                  _qtyWna,
-                  (val) => setState(() => _qtyWna = val),
-                  darkGreen,
-                ),
               ],
             ],
           ),
           const SizedBox(height: 16),
+
+          // 4. METODE PEMBAYARAN
           _buildCardSection(
             cardBg,
             borderLight,
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.person_outline,
-                    size: 18,
-                    color: Color(0xFFCBB26A),
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    '3. Data Diri Pemesan',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _buildInputLabelField(
-                'Nama Lengkap (Sesuai KTP/Identitas)',
-                _namaController,
-              ),
-              const SizedBox(height: 12),
-              _buildInputLabelField(
-                'Email (Pengiriman E-Tiket)',
-                _emailController,
-              ),
-              const SizedBox(height: 12),
-              _buildInputLabelField('No. WhatsApp / Telepon', _phoneController),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildCardSection(
-            cardBg,
-            borderLight,
-            children: [
-              Row(
-                children: [
-                  Icon(
+                  const Icon(
                     Icons.account_balance_wallet_outlined,
                     size: 18,
                     color: Color(0xFFCBB26A),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
                     '4. Metode Pembayaran',
                     style: TextStyle(
@@ -544,14 +640,79 @@ class _TiketScreenState extends State<TiketScreen> {
                 ],
               ),
               const SizedBox(height: 14),
-              RadioGroup<String>(
-                groupValue: _paymentMethod,
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _paymentMethod = value);
-                  }
-                },
-                child: Row(
+              if (_isMancanegara) ...[
+                // Pilihan untuk Wisatawan Mancanegara (Kartu Kredit / Visa / Mastercard)
+                GestureDetector(
+                  onTap: () => setState(() => _paymentMethod = 'CREDIT_CARD'),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _paymentMethod == 'CREDIT_CARD' ? const Color(0xFFF3E8FF) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _paymentMethod == 'CREDIT_CARD' ? const Color(0xFF7E22CE) : borderLight,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Radio<String>(
+                          value: 'CREDIT_CARD',
+                          groupValue: _paymentMethod,
+                          activeColor: const Color(0xFF7E22CE),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _paymentMethod = val);
+                          },
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Credit / Debit Card (Visa / Mastercard)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Metode pembayaran resmi untuk wisatawan internasional',
+                                style: TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E3A8A),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('VISA', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDC2626),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('MC', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Pilihan untuk Wisatawan Domestik (QRIS & Bank Transfer)
+                Row(
                   children: [
                     Expanded(
                       child: GestureDetector(
@@ -573,7 +734,11 @@ class _TiketScreenState extends State<TiketScreen> {
                             children: [
                               Radio<String>(
                                 value: 'QRIS',
+                                groupValue: _paymentMethod,
                                 activeColor: darkGreen,
+                                onChanged: (val) {
+                                  if (val != null) setState(() => _paymentMethod = val);
+                                },
                               ),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -621,7 +786,11 @@ class _TiketScreenState extends State<TiketScreen> {
                             children: [
                               Radio<String>(
                                 value: 'BANK',
+                                groupValue: _paymentMethod,
                                 activeColor: darkGreen,
+                                onChanged: (val) {
+                                  if (val != null) setState(() => _paymentMethod = val);
+                                },
                               ),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,10 +819,12 @@ class _TiketScreenState extends State<TiketScreen> {
                     ),
                   ],
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 20),
+
+          // 5. RINGKASAN PESANAN
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -663,33 +834,56 @@ class _TiketScreenState extends State<TiketScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Ringkasan Pesanan',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: goldAccent,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '5. Ringkasan Pesanan',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: goldAccent,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _isMancanegara ? const Color(0xFF7E22CE) : goldAccent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _isMancanegara ? 'MANCANEGARA' : 'DOMESTIK',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: _isMancanegara ? Colors.white : textDark,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
-                _buildSummaryRow('Lokasi:', 'Museum Brawijaya'),
+                _buildSummaryRow('Lokasi:', 'Museum Brawijaya Malang'),
                 _buildSummaryRow('Tanggal:', _formattedDate),
                 _buildSummaryRow('Sesi Waktu:', _selectedSesi),
-                _buildSummaryRow(
-                  'WNI - Dewasa x$_qtyDewasa',
-                  'Rp ${(_qtyDewasa * _priceDewasa).toString()}',
-                ),
-                if (_qtyPelajar > 0)
+                if (_isMancanegara) ...[
                   _buildSummaryRow(
-                    'WNI - Pelajar x$_qtyPelajar',
-                    'Rp ${(_qtyPelajar * _pricePelajar).toString()}',
-                  ),
-                if (_qtyWna > 0)
-                  _buildSummaryRow(
-                    'WNA x$_qtyWna',
+                    'Wisatawan Asing x$_qtyWna',
                     'Rp ${(_qtyWna * _priceWna).toString()}',
                   ),
-                _buildSummaryRow('Biaya Admin', 'GRATIS', isGold: true),
+                ] else ...[
+                  _buildSummaryRow(
+                    'WNI - Dewasa x$_qtyDewasa',
+                    'Rp ${(_qtyDewasa * _priceDewasa).toString()}',
+                  ),
+                  if (_qtyPelajar > 0)
+                    _buildSummaryRow(
+                      'WNI - Pelajar x$_qtyPelajar',
+                      'Rp ${(_qtyPelajar * _pricePelajar).toString()}',
+                    ),
+                ],
+                _buildSummaryRow('Metode Bayar:', _paymentMethod),
+                _buildSummaryRow('Biaya Admin:', 'GRATIS', isGold: true),
                 const Divider(color: Colors.white24, height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -751,7 +945,7 @@ class _TiketScreenState extends State<TiketScreen> {
                 const SizedBox(height: 10),
                 const Center(
                   child: Text(
-                    '🔒 E-Tiket Instant dikirim via WhatsApp & Email',
+                    '🔒 E-Tiket Resmi & QR Code instan dikirim via Email',
                     style: TextStyle(fontSize: 10, color: Colors.white70),
                   ),
                 ),
@@ -780,7 +974,7 @@ class _TiketScreenState extends State<TiketScreen> {
             child: Column(
               children: [
                 Text(
-                  'Instruksi Pembayaran & E-Tiket',
+                  'Instruksi Pembayaran',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -789,7 +983,7 @@ class _TiketScreenState extends State<TiketScreen> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Selesaikan pembayaran sebelum batas waktu berakhir untuk mengaktifkan E-Tiket Anda.',
+                  'Selesaikan pembayaran sebelum batas waktu berakhir. E-tiket resmi akan dikirim melalui Email / WhatsApp setelah pembayaran diverifikasi.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 11, color: textMuted),
                 ),
@@ -1076,13 +1270,13 @@ class _TiketScreenState extends State<TiketScreen> {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Konfirmasi diterima! E-Tiket Anda sedang diverifikasi.'),
+                            content: Text('Konfirmasi diterima! Pembayaran Anda sedang diverifikasi admin. E-tiket akan dikirim ke Email & WhatsApp.'),
                             backgroundColor: Colors.teal,
                           ),
                         );
                       },
                       icon: const Icon(Icons.check_circle_outline, size: 16),
-                      label: const Text('Konfirmasi Transfer'),
+                      label: const Text('Konfirmasi Pembayaran'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: darkGreen,
                         foregroundColor: Colors.white,
@@ -1095,148 +1289,100 @@ class _TiketScreenState extends State<TiketScreen> {
                   ],
           ),
           const SizedBox(height: 20),
+          // Info notifikasi E-Tiket via Email & WhatsApp
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: darkGreen,
-              borderRadius: BorderRadius.circular(20),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderLight),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PREVIEW E-TIKET',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: goldAccent,
-                          ),
-                        ),
-                        Text(
-                          'Museum Brawijaya',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2E7D32),
-                        borderRadius: BorderRadius.circular(12),
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Text(
-                        'Lunas',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: const Icon(Icons.mark_email_read_outlined, color: Color(0xFF047857), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Pengiriman E-Tiket Resmi',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2C322B),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Setelah pembayaran selesai dan diverifikasi, E-Tiket beserta barcode/QR code resmi hanya dapat diakses melalui:',
+                            style: TextStyle(fontSize: 11, color: textMuted),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const Divider(color: Colors.white24, height: 24),
-                _buildETicketRow('Nama Pemesan:', _namaController.text.isNotEmpty ? _namaController.text : 'Pengunjung'),
-                _buildETicketRow('Tanggal Kunjungan:', _formattedDate),
-                _buildETicketRow('Sesi Jam:', _selectedSesi),
-                _buildETicketRow(
-                  'Kategori Tiket:',
-                  'Dewasa ($_qtyDewasa)${_qtyPelajar > 0 ? ', Pelajar ($_qtyPelajar)' : ''}${_qtyWna > 0 ? ', WNA ($_qtyWna)' : ''}',
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFFF4F5F3),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
                     children: [
-                      Icon(Icons.barcode_reader, size: 40, color: goldAccent),
-                      const SizedBox(height: 4),
-                      GestureDetector(
-                        onTap: () {
-                          final code = _booking?.id ?? 'MBW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-                          _copyToClipboard(code);
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              _booking?.id ?? 'MBW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                letterSpacing: 2,
-                                color: goldAccent,
-                                fontWeight: FontWeight.bold,
-                              ),
+                      Row(
+                        children: [
+                          const Icon(Icons.email, size: 16, color: Color(0xFF3F5243)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Email: ${_emailController.text.isNotEmpty ? _emailController.text : "Email Anda"}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF2C322B)),
                             ),
-                            const SizedBox(width: 6),
-                            Icon(Icons.copy, size: 14, color: goldAccent),
-                          ],
-                        ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.phone_android, size: 16, color: Color(0xFF047857)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'WhatsApp: ${_fullPhoneNumber.isNotEmpty ? _fullPhoneNumber : "Nomor WhatsApp Anda"}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF2C322B)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  '*E-Tiket & QR Code Masuk akan aktif otomatis setelah pembayaran berhasil diproses.',
-                  style: TextStyle(fontSize: 9, color: Colors.white70),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('E-Tiket sedang diunduh (format PDF)...'),
-                        backgroundColor: Colors.teal,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.download, size: 16),
-                  label: const Text('Unduh E-Tiket (PDF)'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white38),
-                    minimumSize: const Size(double.infinity, 44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: Text(
-                    'Salinan e-tiket juga dikirim ke email ${_emailController.text}',
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: Colors.white70,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
                 TextButton(
                   onPressed: () => setState(() => _currentStep = 0),
                   child: Center(
                     child: Text(
-                      '← Kembali ke Formulir',
-                      style: TextStyle(color: goldAccent, fontSize: 11),
+                      '← Kembali ke Formulir Pemesanan',
+                      style: TextStyle(color: darkGreen, fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -1349,6 +1495,168 @@ class _TiketScreenState extends State<TiketScreen> {
               color: darkGreen,
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  void _showCountryPicker() {
+    final searchCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        List<Map<String, String>> filtered = List.from(_countryCodes);
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.65,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Text(
+                      'Pilih Kode Negara',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: TextField(
+                      controller: searchCtrl,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        hintText: 'Cari negara atau kode...',
+                        hintStyle: const TextStyle(fontSize: 13),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        filled: true,
+                        fillColor: const Color(0xFFF4F5F3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setModalState(() {
+                          final q = val.toLowerCase().trim();
+                          filtered = _countryCodes.where((c) {
+                            return c['name']!.toLowerCase().contains(q) ||
+                                c['code']!.toLowerCase().contains(q);
+                          }).toList();
+                        });
+                      },
+                    ),
+                  ),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, idx) {
+                        final item = filtered[idx];
+                        final isSelected = item['code'] == _selectedCountryCode;
+                        return ListTile(
+                          leading: Text(item['flag'] ?? '', style: const TextStyle(fontSize: 22)),
+                          title: Text(item['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                          trailing: Text(
+                            item['code'] ?? '',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? const Color(0xFF3F5243) : Colors.grey.shade600,
+                            ),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _selectedCountryCode = item['code']!;
+                              _selectedCountryFlag = item['flag']!;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPhoneInputField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'No. WhatsApp / Telepon',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF2C322B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF4F5F3),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              // Dropdown negara dengan bendera dan tanda kebawah
+              InkWell(
+                onTap: _showCountryPicker,
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_selectedCountryFlag, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 4),
+                      Text(
+                        _selectedCountryCode,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(Icons.arrow_drop_down, size: 18, color: Color(0xFF727A71)),
+                    ],
+                  ),
+                ),
+              ),
+              Container(width: 1, height: 26, color: Colors.grey.shade300),
+              // Input field nomor telepon
+              Expanded(
+                child: TextField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(fontSize: 12),
+                  decoration: const InputDecoration(
+                    hintText: '81234567890',
+                    hintStyle: TextStyle(color: Color(0xFFA0A7A0), fontSize: 12),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

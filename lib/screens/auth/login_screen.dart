@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../main_navigation.dart';
 import 'register_screen.dart';
+import 'reset_password_screen.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/app_loading_overlay.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +16,216 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
+  bool _isLoading = false;
+
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harap masukkan email dan kata sandi Anda'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.login(email: email, password: password);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      AppLoadingOverlay.navigateWithLoading(
+        context,
+        targetScreen: const MainNavigation(),
+        replace: true,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final email = _emailController.text.trim().isNotEmpty
+          ? _emailController.text.trim()
+          : 'pengunjung.google@gmail.com';
+      await AuthService.loginWithGoogle(email: email);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      AppLoadingOverlay.navigateWithLoading(
+        context,
+        targetScreen: const MainNavigation(),
+        replace: true,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showForgotPasswordDialog() {
+    final emailDialogController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_reset, color: Color(0xFF3F5243)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Lupa Kata Sandi',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C322B),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Masukkan email yang terdaftar untuk menerima link reset kata sandi.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF727A71)),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: emailDialogController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: 'nama@email.com',
+                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFA0A7A0)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        filled: true,
+                        fillColor: const Color(0xFFFAFAFA),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE0E3DF)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                  child: const Text('Batal', style: TextStyle(color: Color(0xFF727A71))),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3F5243),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final inputEmail = emailDialogController.text.trim();
+                          if (inputEmail.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Silakan masukkan email'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final res = await AuthService.forgotPassword(email: inputEmail);
+                            final token = res['resetToken'] as String;
+                            if (!mounted) return;
+                            Navigator.pop(ctx); // Close dialog
+
+                            // Show snackbar with action / direct link to reset password form
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Email terdaftar! Klik tombol untuk mereset kata sandi.'),
+                                backgroundColor: const Color(0xFF3F5243),
+                                duration: const Duration(seconds: 10),
+                                action: SnackBarAction(
+                                  label: 'BUAT PASSWORD BARU',
+                                  textColor: const Color(0xFFCBB26A),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ResetPasswordScreen(
+                                          token: token,
+                                          email: inputEmail,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+
+                            // Also automatically navigate to ResetPasswordScreen for best UX
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ResetPasswordScreen(
+                                  token: token,
+                                  email: inputEmail,
+                                ),
+                              ),
+                            );
+                          } catch (err) {
+                            setDialogState(() => isSubmitting = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(err.toString().replaceAll('Exception: ', '')),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Kirim Link Reset'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   void dispose() {
@@ -235,9 +448,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           GestureDetector(
-                            onTap: () {
-                              // Action lupa kata sandi
-                            },
+                            onTap: _showForgotPasswordDialog,
                             child: const Text(
                               'Lupa kata sandi?',
                               style: TextStyle(
@@ -253,14 +464,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // Tombol Masuk Utama
                       ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const MainNavigation(),
-                            ),
-                          );
-                        },
+                        onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: darkGreen,
                           foregroundColor: Colors.white,
@@ -270,13 +474,22 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Masuk',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Masuk',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 20),
 
@@ -302,14 +515,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // Tombol "Lanjut dengan Google"
                       OutlinedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const MainNavigation(),
-                            ),
-                          );
-                        },
+                        onPressed: _isLoading ? null : _handleGoogleLogin,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: textDark,
                           side: const BorderSide(color: borderLight),
@@ -321,7 +527,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            Icon(Icons.g_mobiledata_rounded, size: 22, color: textDark),
+                            Icon(Icons.g_mobiledata_rounded, size: 24, color: textDark),
                             SizedBox(width: 6),
                             Text(
                               'Lanjut dengan Google',

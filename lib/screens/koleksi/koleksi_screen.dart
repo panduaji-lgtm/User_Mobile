@@ -9,6 +9,9 @@ import 'detail_senjata_prri_screen.dart';
 import 'detail_seragam_tni_screen.dart';
 import 'detail_tank_amfibi_screen.dart';
 
+import '../../services/koleksi_service.dart';
+import 'detail_generic_koleksi_screen.dart';
+
 class KoleksiScreen extends StatefulWidget {
   const KoleksiScreen({super.key});
 
@@ -22,60 +25,146 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
+  List<Map<String, String>> _dynamicKoleksiItems = [];
+  bool _isLoadingKoleksi = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchKoleksiFromBackend();
+  }
+
+  Future<void> _fetchKoleksiFromBackend() async {
+    setState(() => _isLoadingKoleksi = true);
+    try {
+      final backendItems = await KoleksiService.getAll();
+      if (!mounted) return;
+      if (backendItems.isNotEmpty) {
+        final List<Map<String, String>> mapped = [];
+        for (final item in backendItems) {
+          // Cari asset default jika ada
+          String imagePath = item.imageUrl ?? '';
+          if (imagePath.isEmpty) {
+            final t = item.nama.toLowerCase();
+            if (t.contains('gerbong')) {
+              imagePath = 'assets/images/collection/menu_gerbong_maut.png';
+            } else if (t.contains('perahu')) {
+              imagePath = 'assets/images/collection/menu_perahu_segigir.png';
+            } else if (t.contains('meriam')) {
+              imagePath = 'assets/images/collection/menu_meriam_si_buang.png';
+            } else if (t.contains('amfibi')) {
+              imagePath = 'assets/images/collection/menu_tank_amfibi.png';
+            } else if (t.contains('senapan')) {
+              imagePath = 'assets/images/collection/menu_senapan_laras_panjang.png';
+            } else if (t.contains('seragam')) {
+              imagePath = 'assets/images/collection/menu_seragam_tni.png';
+            } else if (t.contains('mobil')) {
+              imagePath = 'assets/images/collection/menu_mobil_dinas_letkol.png';
+            } else if (t.contains('prri')) {
+              imagePath = 'assets/images/collection/menu_senjata_penumpasan_prri.png';
+            }
+          }
+
+          mapped.add({
+            'title': item.nama,
+            'subtitle': item.subDeskripsi.isNotEmpty ? item.subDeskripsi : (item.tahun.isNotEmpty ? item.tahun : 'Koleksi Museum'),
+            'category': item.kategori,
+            'image': imagePath,
+            'description': item.deskripsiLengkap ?? item.subDeskripsi,
+            'tahun': item.tahun,
+            'lokasi': item.lokasi,
+          });
+        }
+        setState(() {
+          _dynamicKoleksiItems = mapped;
+          _isLoadingKoleksi = false;
+        });
+      } else {
+        setState(() => _isLoadingKoleksi = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingKoleksi = false);
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  final List<Map<String, String>> _allKoleksiItems = const [
+  final List<Map<String, String>> _fallbackKoleksiItems = const [
     {
       'title': 'Gerbong Maut',
       'subtitle': '1947 - 1948',
       'category': 'Kendaraan',
       'image': 'assets/images/collection/menu_gerbong_maut.png',
+      'description': 'Gerbong kereta api yang menjadi saksi bisu tragedi Peristiwa Gerbong Maut 1947, di mana 46 pejuang kemerdekaan Indonesia tewas dalam kondisi gerbong yang sangat sesak dan panas.',
+      'tahun': '1947',
+      'lokasi': 'Halaman Depan',
     },
     {
       'title': 'Perahu Segigir',
       'subtitle': 'Perjuangan Laut',
       'category': 'Kendaraan',
       'image': 'assets/images/collection/menu_perahu_segigir.png',
+      'description': 'Perahu tradisional yang digunakan pejuang kemerdekaan untuk operasi militer dan patroli laut.',
+      'tahun': '1946',
+      'lokasi': 'Area Pameran Luar',
     },
     {
       'title': 'Meriam Si Buang',
       'subtitle': '1945',
       'category': 'Senjata',
       'image': 'assets/images/collection/menu_meriam_si_buang.png',
+      'description': 'Meriam bersejarah hasil rampasan tentara sekutu yang digunakan dalam pertempuran kemerdekaan.',
+      'tahun': '1945',
+      'lokasi': 'Halaman Depan',
     },
     {
       'title': 'Tank Amfibi',
       'subtitle': '1945',
       'category': 'Kendaraan',
       'image': 'assets/images/collection/menu_tank_amfibi.png',
+      'description': 'Kendaraan lapis baja amfibi yang digunakan dalam operasi militer pertempuran di darat dan air.',
+      'tahun': '1945',
+      'lokasi': 'Halaman Belakang',
     },
     {
       'title': 'Senapan Laras Panjang',
       'subtitle': '1945 - 1949',
       'category': 'Senjata',
       'image': 'assets/images/collection/menu_senapan_laras_panjang.png',
+      'description': 'Senapan laras panjang yang digunakan oleh prajurit pejuang kemerdekaan Republik Indonesia.',
+      'tahun': '1945',
+      'lokasi': 'Gedung Utama',
     },
     {
       'title': 'Seragam TNI',
       'subtitle': 'Era Revolusi',
       'category': 'Semua',
       'image': 'assets/images/collection/menu_seragam_tni.png',
+      'description': 'Pakaian dinas resmi dan seragam tempur prajurit TNI pada masa revolusi kemerdekaan fisik.',
+      'tahun': '1950',
+      'lokasi': 'Gedung Utama (Lantai 2)',
     },
     {
       'title': 'Mobil Dinas Letkol',
       'subtitle': '1947',
       'category': 'Kendaraan',
       'image': 'assets/images/collection/menu_mobil_dinas_letkol.png',
+      'description': 'Kendaraan resmi dinas Letnan Kolonel yang digunakan pada masa perjuangan mempertahankan kemerdekaan.',
+      'tahun': '1947',
+      'lokasi': 'Gedung Utama (Lantai 1)',
     },
     {
       'title': 'Senjata Penumpasan PRRI',
       'subtitle': 'Operasi Militer',
       'category': 'Senjata',
       'image': 'assets/images/collection/menu_senjata_penumpasan_prri.png',
+      'description': 'Senjata peninggalan operasi militer penumpasan PRRI/Permesta untuk mempertahankan kedaulatan NKRI.',
+      'tahun': '1958',
+      'lokasi': 'Gedung Utama',
     },
   ];
 
@@ -91,11 +180,13 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
 
     String selectedCategory = _categories[_selectedCategoryIndex];
 
+    final activeCollection = _dynamicKoleksiItems.isNotEmpty ? _dynamicKoleksiItems : _fallbackKoleksiItems;
+
     List<Map<String, String>> filteredItems;
     if (selectedCategory == 'Semua') {
-      filteredItems = _allKoleksiItems;
+      filteredItems = activeCollection;
     } else {
-      filteredItems = _allKoleksiItems
+      filteredItems = activeCollection
           .where((item) => item['category'] == selectedCategory)
           .toList();
     }
@@ -439,19 +530,37 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                                 height: 104,
                                 width: double.infinity,
                                 color: const Color(0xFFF7F3EA),
-                                child: Image.asset(
-                                  item['image']!,
-                                  fit: BoxFit.contain,
-                                  filterQuality: FilterQuality.high,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Center(
-                                      child: Icon(
-                                        Icons.image_not_supported,
-                                        color: textMuted,
+                                child: (item['image'] != null && item['image']!.startsWith('http'))
+                                    ? Image.network(
+                                        item['image']!,
+                                        fit: BoxFit.contain,
+                                        filterQuality: FilterQuality.high,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Center(
+                                            child: Icon(
+                                              Icons.museum_outlined,
+                                              color: textMuted,
+                                              size: 32,
+                                            ),
+                                          );
+                                        },
+                                      )
+                                    : Image.asset(
+                                        item['image'] != null && item['image']!.isNotEmpty
+                                            ? item['image']!
+                                            : 'assets/images/collection/menu_gerbong_maut.png',
+                                        fit: BoxFit.contain,
+                                        filterQuality: FilterQuality.high,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Center(
+                                            child: Icon(
+                                              Icons.museum_outlined,
+                                              color: textMuted,
+                                              size: 32,
+                                            ),
+                                          );
+                                        },
                                       ),
-                                    );
-                                  },
-                                ),
                               ),
                             ),
                             Expanded(
@@ -467,7 +576,7 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          item['title']!,
+                                          item['title'] ?? '',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
@@ -479,7 +588,7 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          item['subtitle']!,
+                                          item['subtitle'] ?? '',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
@@ -495,7 +604,7 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                                           Navigator.of(context).pop();
                                         }
 
-                                        final detailScreen =
+                                        Widget? detailScreen =
                                             switch (item['title']) {
                                               'Gerbong Maut' =>
                                                 DetailGerbongMautScreen(
@@ -531,13 +640,24 @@ class _KoleksiScreenState extends State<KoleksiScreen> {
                                                 ),
                                               _ => null,
                                             };
-                                        if (detailScreen != null) {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute<void>(
-                                              builder: (_) => detailScreen,
-                                            ),
-                                          );
-                                        }
+
+                                        // Fallback ke DetailGenericKoleksiScreen untuk koleksi baru yang ditambahkan admin
+                                        detailScreen ??= DetailGenericKoleksiScreen(
+                                          title: item['title'] ?? 'Koleksi Museum',
+                                          subtitle: item['subtitle'] ?? '',
+                                          category: item['category'] ?? 'Umum',
+                                          description: item['description'] ?? '',
+                                          tahun: item['tahun'],
+                                          lokasi: item['lokasi'],
+                                          image: item['image'],
+                                          onBack: onBack,
+                                        );
+
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) => detailScreen!,
+                                          ),
+                                        );
                                       },
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: textDark,

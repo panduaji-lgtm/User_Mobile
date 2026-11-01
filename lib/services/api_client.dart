@@ -48,6 +48,20 @@ class ApiClient {
     }
   }
 
+  static Future<Map<String, dynamic>> put(
+      String path, Map<String, dynamic> body) async {
+    try {
+      final uri = Uri.parse('$kBaseUrl$path');
+      final res = await http
+          .put(uri, headers: _defaultHeaders, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 10));
+      return _handleResponse(res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Gagal terhubung ke server. Pastikan backend berjalan.');
+    }
+  }
+
   static Map<String, dynamic> _handleResponse(http.Response res) {
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode >= 200 && res.statusCode < 300) {

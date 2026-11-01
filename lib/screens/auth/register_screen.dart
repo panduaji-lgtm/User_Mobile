@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/app_loading_overlay.dart';
+import '../main_navigation.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,6 +15,77 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _handleRegister() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final pass = _passwordController.text;
+    final confirm = _confirmPasswordController.text;
+
+    if (name.isEmpty || email.isEmpty || pass.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Semua kolom wajib diisi'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (pass != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Konfirmasi kata sandi tidak cocok'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (pass.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kata sandi minimal 6 karakter'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.register(nama: name, email: email, password: pass);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      // Berpindah ke menu utama dengan transisi loading overlay
+      await AppLoadingOverlay.navigateWithLoading(
+        context,
+        targetScreen: const MainNavigation(),
+        replace: true,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _handleGoogleRegister() async {
+    setState(() => _isLoading = true);
+    try {
+      final name = _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'Pengunjung Brawijaya';
+      final email = _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : 'pengunjung.google@gmail.com';
+
+      await AuthService.loginWithGoogle(email: email, nama: name);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      await AppLoadingOverlay.navigateWithLoading(
+        context,
+        targetScreen: const MainNavigation(),
+        replace: true,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -261,9 +335,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       // Tombol Daftar
                       ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
+                        onPressed: _isLoading ? null : _handleRegister,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: darkGreen,
                           foregroundColor: Colors.white,
@@ -273,12 +345,70 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Daftar Sekarang',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Daftar Sekarang',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Pembatas "ATAU"
+                      Row(
+                        children: const [
+                          Expanded(child: Divider(color: borderLight)),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12.0),
+                            child: Text(
+                              'ATAU',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFFA0A7A0),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
+                          Expanded(child: Divider(color: borderLight)),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Tombol "Daftar dengan Google"
+                      OutlinedButton(
+                        onPressed: _isLoading ? null : _handleGoogleRegister,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: textDark,
+                          side: const BorderSide(color: borderLight),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.g_mobiledata_rounded, size: 24, color: textDark),
+                            SizedBox(width: 6),
+                            Text(
+                              'Daftar dengan Google',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: textDark,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 20),

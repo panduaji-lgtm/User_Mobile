@@ -50,6 +50,7 @@ class TicketBooking {
   final String paymentMethod;
   final String status;
   final int checkedIn;
+  final int isMancanegara;
 
   TicketBooking({
     required this.id,
@@ -66,6 +67,7 @@ class TicketBooking {
     required this.paymentMethod,
     required this.status,
     required this.checkedIn,
+    this.isMancanegara = 0,
   });
 
   factory TicketBooking.fromJson(Map<String, dynamic> json) => TicketBooking(
@@ -80,9 +82,10 @@ class TicketBooking {
         totalBiaya: json['total_biaya'] as int,
         sesi: json['sesi'] as String,
         visitDate: json['visit_date'] as String,
-        paymentMethod: json['payment_method'] as String,
+        paymentMethod: json['payment_method'] as String? ?? 'QRIS',
         status: json['status'] as String,
         checkedIn: json['checked_in'] as int? ?? 0,
+        isMancanegara: json['is_mancanegara'] as int? ?? 0,
       );
 }
 
@@ -110,6 +113,7 @@ class TiketService {
     required String sesi,
     required String visitDate,
     required String paymentMethod,
+    int isMancanegara = 0,
   }) async {
     final body = {
       'nama': nama,
@@ -121,6 +125,7 @@ class TiketService {
       'sesi': sesi,
       'visit_date': visitDate,
       'payment_method': paymentMethod,
+      'is_mancanegara': isMancanegara,
     };
     final res = await ApiClient.post('/tiket/bookings', body);
     return TicketBooking.fromJson(res['data'] as Map<String, dynamic>);

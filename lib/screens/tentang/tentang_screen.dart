@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/ulasan_service.dart';
 
 // Model sederhana untuk satu ulasan
@@ -166,46 +167,42 @@ class _TentangScreenState extends State<TentangScreen> {
         rating: _selectedRating,
         comment: comment,
       );
-    } catch (_) {
-      // Masih fallback simpan lokal jika backend offline
-    }
-
-    setState(() {
-      _reviews.insert(
-        0,
-        _ReviewData(
-          name:          name,
-          date:          _formattedToday(),
-          rating:        _selectedRating,
-          comment:       comment,
-          avatarInitial: initial,
-          avatarColor:   color,
+      if (!mounted) return;
+      await _fetchReviewsFromBackend();
+      setState(() {
+        _nameController.clear();
+        _commentController.clear();
+        _selectedRating = 0;
+        _hoverRating    = 0;
+        _isSubmitting   = false;
+        _showForm       = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('Ulasan berhasil dikirim dan tersimpan!'),
+            ],
+          ),
+          backgroundColor: darkGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 3),
         ),
       );
-      _nameController.clear();
-      _commentController.clear();
-      _selectedRating = 0;
-      _hoverRating    = 0;
-      _isSubmitting   = false;
-      _showForm       = false;
-    });
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('Ulasan berhasil dikirim! Terima kasih'),
-          ],
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengirim ulasan: ${e.toString().replaceAll("Exception: ", "")}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: darkGreen,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+      );
+    }
   }
 
   @override
@@ -379,6 +376,156 @@ class _TentangScreenState extends State<TentangScreen> {
                       _buildBulletMission('Meningkatkan aksesibilitas informasi digital dan fasilitas kunjungan.'),
                       const SizedBox(height: 8),
                       _buildBulletMission('Menjaga keutuhan narasi sejarah perjuangan kemerdekaan Jawa Timur.'),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 6.1 Lokasi & Peta Museum Brawijaya
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: borderLight),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.location_on_outlined, size: 20, color: darkGreen),
+                          SizedBox(width: 8),
+                          Text(
+                            'Lokasi & Rute Museum',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Jl. Ijen No.25A, Gading Kasri, Kec. Klojen, Kota Malang, Jawa Timur 65115',
+                        style: TextStyle(fontSize: 11.5, color: textMuted, height: 1.4),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Container Gambar Maps / Ilustrasi Denah
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: double.infinity,
+                          height: 180,
+                          color: const Color(0xFFEFECE6),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.asset(
+                                'assets/images/maps_museum_brawijaya.png',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: const Color(0xFFE2DDD5),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: const [
+                                          Icon(Icons.map_rounded, size: 44, color: darkGreen),
+                                          SizedBox(height: 6),
+                                          Text(
+                                            'Peta Museum Brawijaya Malang',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: textDark,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Kawasan Wisata Bersejarah Jl. Ijen',
+                                            style: TextStyle(fontSize: 10, color: textMuted),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              Positioned(
+                                top: 12,
+                                right: 12,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: darkGreen,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.near_me, size: 12, color: goldAccent),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Pusat Kota Malang',
+                                        style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Tombol Buka di Google Maps
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final uri = Uri.parse('https://maps.app.goo.gl/9R6K4d5y3hRswFvF8');
+                          try {
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Membuka tautan peta Museum Brawijaya di browser...'),
+                                  backgroundColor: darkGreen,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.directions, size: 18),
+                        label: const Text(
+                          'Buka Lokasi di Google Maps',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: darkGreen,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 42),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
                     ],
                   ),
                 ),
