@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../profile/edit_profile_screen.dart';
 import '../auth/login_screen.dart';
+import '../kuis/artifact_match_screen.dart';
 import '../../services/auth_service.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -112,26 +114,43 @@ class HomeScreen extends StatelessWidget {
                             showDialog(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                title: const Text('Konfirmasi Logout', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                                content: const Text('Apakah Anda yakin ingin keluar dari akun?'),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                title: const Text(
+                                  'Konfirmasi Logout',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                content: const Text(
+                                  'Apakah Anda yakin ingin keluar dari akun?',
+                                ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('Batal', style: TextStyle(color: textMuted)),
+                                    child: const Text(
+                                      'Batal',
+                                      style: TextStyle(color: textMuted),
+                                    ),
                                   ),
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.red.shade700,
                                       foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
                                     ),
                                     onPressed: () {
                                       Navigator.pop(ctx);
                                       AuthService.logout();
                                       Navigator.pushAndRemoveUntil(
                                         context,
-                                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                        MaterialPageRoute(
+                                          builder: (_) => const LoginScreen(),
+                                        ),
                                         (route) => false,
                                       );
                                     },
@@ -152,11 +171,18 @@ class HomeScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     user?.nama ?? 'Pengunjung',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textDark),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: textDark,
+                                    ),
                                   ),
                                   Text(
                                     user?.email ?? 'Akun Pengguna',
-                                    style: const TextStyle(fontSize: 11, color: textMuted),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: textMuted,
+                                    ),
                                   ),
                                   const Divider(),
                                 ],
@@ -166,9 +192,19 @@ class HomeScreen extends StatelessWidget {
                               value: 'edit_profile',
                               child: Row(
                                 children: [
-                                  Icon(Icons.edit_outlined, size: 18, color: textDark),
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: textDark,
+                                  ),
                                   SizedBox(width: 10),
-                                  Text('Edit Profil', style: TextStyle(fontSize: 13, color: textDark)),
+                                  Text(
+                                    'Edit Profil',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: textDark,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -176,9 +212,19 @@ class HomeScreen extends StatelessWidget {
                               value: 'logout',
                               child: Row(
                                 children: [
-                                  Icon(Icons.logout, size: 18, color: Colors.red),
+                                  Icon(
+                                    Icons.logout,
+                                    size: 18,
+                                    color: Colors.red,
+                                  ),
                                   SizedBox(width: 10),
-                                  Text('Log Out', style: TextStyle(fontSize: 13, color: Colors.red)),
+                                  Text(
+                                    'Log Out',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.red,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -246,6 +292,77 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ArtifactMatchScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        gradient: const LinearGradient(
+                          colors: [darkGreen, Color(0xFF61775F)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: darkGreen.withValues(alpha: 0.16),
+                            blurRadius: 12,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.auto_awesome, color: goldAccent, size: 30),
+                          SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '✨ Temukan Artefak Jiwamu dengan AI',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 5),
+                                Text(
+                                  'Ikuti kuis singkat dan temukan koleksi yang cocok dengan kepribadianmu.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.white70,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 

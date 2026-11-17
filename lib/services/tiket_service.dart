@@ -23,15 +23,15 @@ class TiketCategory {
   });
 
   factory TiketCategory.fromJson(Map<String, dynamic> json) => TiketCategory(
-        id: json['id'] as int,
-        badge: json['badge'] as String,
-        badgeBg: json['badge_bg'] as String? ?? '#fef3c7',
-        badgeColor: json['badge_color'] as String? ?? '#92400e',
-        title: json['title'] as String,
-        price: json['price'] as int,
-        kuota: json['kuota'] as int,
-        status: json['status'] as String,
-      );
+    id: json['id'] as int,
+    badge: json['badge'] as String,
+    badgeBg: json['badge_bg'] as String? ?? '#fef3c7',
+    badgeColor: json['badge_color'] as String? ?? '#92400e',
+    title: json['title'] as String,
+    price: json['price'] as int,
+    kuota: json['kuota'] as int,
+    status: json['status'] as String,
+  );
 }
 
 /// Model pemesanan tiket
@@ -71,22 +71,22 @@ class TicketBooking {
   });
 
   factory TicketBooking.fromJson(Map<String, dynamic> json) => TicketBooking(
-        id: json['id'] as String,
-        nama: json['nama'] as String,
-        email: json['email'] as String,
-        phone: json['phone'] as String?,
-        kategoriDewasa: json['kategori_dewasa'] as int? ?? 0,
-        kategoriPelajar: json['kategori_pelajar'] as int? ?? 0,
-        kategoriWna: json['kategori_wna'] as int? ?? 0,
-        totalTiket: json['total_tiket'] as int,
-        totalBiaya: json['total_biaya'] as int,
-        sesi: json['sesi'] as String,
-        visitDate: json['visit_date'] as String,
-        paymentMethod: json['payment_method'] as String? ?? 'QRIS',
-        status: json['status'] as String,
-        checkedIn: json['checked_in'] as int? ?? 0,
-        isMancanegara: json['is_mancanegara'] as int? ?? 0,
-      );
+    id: json['id'] as String,
+    nama: json['nama'] as String,
+    email: json['email'] as String,
+    phone: json['phone'] as String?,
+    kategoriDewasa: json['kategori_dewasa'] as int? ?? 0,
+    kategoriPelajar: json['kategori_pelajar'] as int? ?? 0,
+    kategoriWna: json['kategori_wna'] as int? ?? 0,
+    totalTiket: json['total_tiket'] as int,
+    totalBiaya: json['total_biaya'] as int,
+    sesi: json['sesi'] as String,
+    visitDate: json['visit_date'] as String,
+    paymentMethod: json['payment_method'] as String? ?? 'QRIS',
+    status: json['status'] as String,
+    checkedIn: json['checked_in'] as int? ?? 0,
+    isMancanegara: json['is_mancanegara'] as int? ?? 0,
+  );
 }
 
 /// Service untuk semua operasi tiket
@@ -131,16 +131,39 @@ class TiketService {
     return TicketBooking.fromJson(res['data'] as Map<String, dynamic>);
   }
 
+  /// Buat transaksi Midtrans untuk pemesanan yang sudah tersimpan.
+  static Future<Uri> createPayment(String bookingId) async {
+    final res = await ApiClient.post('/payments/create-transaction', {
+      'bookingId': bookingId,
+    });
+    final redirectUrl = res['redirect_url'];
+    if (redirectUrl is! String || redirectUrl.trim().isEmpty) {
+      throw ApiException('URL pembayaran tidak tersedia dari server.');
+    }
+
+    final uri = Uri.tryParse(redirectUrl);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      throw ApiException('URL pembayaran dari server tidak valid.');
+    }
+    return uri;
+  }
+
   /// Ambil riwayat pemesanan berdasarkan email
   static Future<List<TicketBooking>> getMyBookings(String email) async {
-    final res = await ApiClient.get('/tiket/bookings?search=${Uri.encodeComponent(email)}&limit=50');
+    final res = await ApiClient.get(
+      '/tiket/bookings?search=${Uri.encodeComponent(email)}&limit=50',
+    );
     final list = res['data'] as List<dynamic>;
-    return list.map((e) => TicketBooking.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => TicketBooking.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Ambil detail 1 pemesanan berdasarkan ID
   static Future<TicketBooking> getBookingById(String id) async {
-    final res = await ApiClient.get('/tiket/bookings/${Uri.encodeComponent(id)}');
+    final res = await ApiClient.get(
+      '/tiket/bookings/${Uri.encodeComponent(id)}',
+    );
     return TicketBooking.fromJson(res['data'] as Map<String, dynamic>);
   }
 }

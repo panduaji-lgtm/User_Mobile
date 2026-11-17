@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../services/ulasan_service.dart';
 
 // Model sederhana untuk satu ulasan
@@ -8,6 +12,8 @@ class _ReviewData {
   final String date;
   final int rating;
   final String comment;
+  final String reply;
+  final String replyDate;
   final String avatarInitial;
   final Color avatarColor;
 
@@ -16,6 +22,8 @@ class _ReviewData {
     required this.date,
     required this.rating,
     required this.comment,
+    this.reply = '',
+    this.replyDate = '',
     required this.avatarInitial,
     required this.avatarColor,
   });
@@ -29,12 +37,12 @@ class TentangScreen extends StatefulWidget {
 }
 
 class _TentangScreenState extends State<TentangScreen> {
-  static const Color bgCream     = Color(0xFFF7F3EA);
-  static const Color darkGreen   = Color(0xFF3F5243);
-  static const Color goldAccent  = Color(0xFFCBB26A);
-  static const Color cardBg      = Colors.white;
-  static const Color textDark    = Color(0xFF2C322B);
-  static const Color textMuted   = Color(0xFF727A71);
+  static const Color bgCream = Color(0xFFF7F3EA);
+  static const Color darkGreen = Color(0xFF3F5243);
+  static const Color goldAccent = Color(0xFFCBB26A);
+  static const Color cardBg = Colors.white;
+  static const Color textDark = Color(0xFF2C322B);
+  static const Color textMuted = Color(0xFF727A71);
   static const Color borderLight = Color(0xFFE0E3DF);
 
   static const List<Color> _avatarColors = [
@@ -88,14 +96,20 @@ class _TentangScreenState extends State<TentangScreen> {
           _reviews.clear();
           for (var i = 0; i < res.items.length; i++) {
             final item = res.items[i];
-            final initial = item.nama.isNotEmpty ? item.nama[0].toUpperCase() : '?';
+            final initial = item.nama.isNotEmpty
+                ? item.nama[0].toUpperCase()
+                : '?';
             final color = _avatarColors[i % _avatarColors.length];
             _reviews.add(
               _ReviewData(
                 name: item.nama,
-                date: item.createdAt.length >= 10 ? item.createdAt.substring(0, 10) : item.createdAt,
+                date: item.createdAt.length >= 10
+                    ? item.createdAt.substring(0, 10)
+                    : item.createdAt,
                 rating: item.rating,
                 comment: item.comment,
+                reply: item.reply,
+                replyDate: item.replyDate,
                 avatarInitial: initial,
                 avatarColor: color,
               ),
@@ -106,13 +120,13 @@ class _TentangScreenState extends State<TentangScreen> {
     } catch (_) {}
   }
 
-  final _formKey           = GlobalKey<FormState>();
-  final _nameController    = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _commentController = TextEditingController();
-  int  _selectedRating = 0;
-  int  _hoverRating    = 0;
-  bool _isSubmitting   = false;
-  bool _showForm       = false;
+  int _selectedRating = 0;
+  int _hoverRating = 0;
+  bool _isSubmitting = false;
+  bool _showForm = false;
 
   @override
   void dispose() {
@@ -134,8 +148,19 @@ class _TentangScreenState extends State<TentangScreen> {
 
   String _formattedToday() {
     const monthNames = [
-      '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+      '',
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
     ];
     final now = DateTime.now();
     return '${now.day} ${monthNames[now.month]} ${now.year}';
@@ -149,17 +174,19 @@ class _TentangScreenState extends State<TentangScreen> {
           content: const Text('Pilih bintang rating terlebih dahulu'),
           backgroundColor: darkGreen,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       return;
     }
     setState(() => _isSubmitting = true);
 
-    final name    = _nameController.text.trim();
+    final name = _nameController.text.trim();
     final comment = _commentController.text.trim();
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    final color   = _avatarColors[_reviews.length % _avatarColors.length];
+    final color = _avatarColors[_reviews.length % _avatarColors.length];
 
     try {
       await UlasanService.submitReview(
@@ -173,9 +200,9 @@ class _TentangScreenState extends State<TentangScreen> {
         _nameController.clear();
         _commentController.clear();
         _selectedRating = 0;
-        _hoverRating    = 0;
-        _isSubmitting   = false;
-        _showForm       = false;
+        _hoverRating = 0;
+        _isSubmitting = false;
+        _showForm = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -188,7 +215,9 @@ class _TentangScreenState extends State<TentangScreen> {
           ),
           backgroundColor: darkGreen,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -197,7 +226,9 @@ class _TentangScreenState extends State<TentangScreen> {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal mengirim ulasan: ${e.toString().replaceAll("Exception: ", "")}'),
+          content: Text(
+            'Gagal mengirim ulasan: ${e.toString().replaceAll("Exception: ", "")}',
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -216,18 +247,34 @@ class _TentangScreenState extends State<TentangScreen> {
             children: [
               // 1. Header Logo
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 16.0,
+                ),
                 child: Row(
                   children: [
                     Container(
-                      width: 36, height: 36,
-                      decoration: const BoxDecoration(color: darkGreen, shape: BoxShape.circle),
-                      child: const Icon(Icons.account_balance, color: goldAccent, size: 18),
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: darkGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.account_balance,
+                        color: goldAccent,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     const Text(
                       'MUSEUM BRAWIJAYA',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: textDark),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: textDark,
+                      ),
                     ),
                   ],
                 ),
@@ -240,7 +287,10 @@ class _TentangScreenState extends State<TentangScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEFECE6),
                         borderRadius: BorderRadius.circular(6),
@@ -248,13 +298,22 @@ class _TentangScreenState extends State<TentangScreen> {
                       ),
                       child: const Text(
                         'TENTANG KAMI',
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: goldAccent, letterSpacing: 0.8),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: goldAccent,
+                          letterSpacing: 0.8,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Tentang Museum Brawijaya',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textDark),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                      ),
                     ),
                   ],
                 ),
@@ -269,22 +328,37 @@ class _TentangScreenState extends State<TentangScreen> {
                     color: cardBg,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: borderLight),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 3))],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
                         child: Image.asset(
                           'assets/images/museum_brawijaya.jpg',
-                          height: 180, width: double.infinity,
+                          height: 180,
+                          width: double.infinity,
                           fit: BoxFit.cover,
                           alignment: const Alignment(0, -0.2),
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: 180, color: Colors.grey.shade300,
-                            child: const Icon(Icons.museum, size: 50, color: Colors.grey),
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                height: 180,
+                                color: Colors.grey.shade300,
+                                child: const Icon(
+                                  Icons.museum,
+                                  size: 50,
+                                  color: Colors.grey,
+                                ),
+                              ),
                         ),
                       ),
                       const Padding(
@@ -292,11 +366,22 @@ class _TentangScreenState extends State<TentangScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Sejarah Berdirinya', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textDark)),
+                            Text(
+                              'Sejarah Berdirinya',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: textDark,
+                              ),
+                            ),
                             SizedBox(height: 8),
                             Text(
                               'Dibangun atas prakarsa Brigjen TNI (Purn.) Soerachman, Pangdam VIII Brawijaya (1959-1962). Pembangunan dimulai tahun 1967 dan secara resmi diresmikan pada 4 Mei 1968 oleh Kolonel Dr. Soewondo.\n\nMuseum ini didirikan dengan tujuan luhur mengenang dan mewariskan semangat perjuangan Tentara Keamanan Rakyat (TKR) bersama seluruh rakyat pejuang Jawa Timur dalam mempertahankan kemerdekaan Republik Indonesia.',
-                              style: TextStyle(fontSize: 11.5, color: textMuted, height: 1.5),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: textMuted,
+                                height: 1.5,
+                              ),
                             ),
                           ],
                         ),
@@ -313,21 +398,41 @@ class _TentangScreenState extends State<TentangScreen> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: borderLight)),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: borderLight),
+                  ),
                   child: Column(
                     children: [
-                      const Text('Perjalanan Museum', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textDark)),
+                      const Text(
+                        'Perjalanan Museum',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: textDark,
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _buildTimelineItem('1962', 'Gagasan Awal', true),
                           _buildTimelineLine(),
-                          _buildTimelineItem('1967', 'Pembangunan\nDimulai', true),
+                          _buildTimelineItem(
+                            '1967',
+                            'Pembangunan\nDimulai',
+                            true,
+                          ),
                           _buildTimelineLine(),
                           _buildTimelineItem('1968', 'Diresmikan', true),
                           _buildTimelineLine(),
-                          _buildTimelineItem('Sekarang', 'Terus Benah', false, isLast: true),
+                          _buildTimelineItem(
+                            'Sekarang',
+                            'Terus Benah',
+                            false,
+                            isLast: true,
+                          ),
                         ],
                       ),
                     ],
@@ -342,15 +447,30 @@ class _TentangScreenState extends State<TentangScreen> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: borderLight)),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: borderLight),
+                  ),
                   child: const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Visi', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textDark)),
+                      Text(
+                        'Visi',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: textDark,
+                        ),
+                      ),
                       SizedBox(height: 8),
                       Text(
                         'Menjadi pusat edukasi dan rekreasi sejarah perjuangan bangsa yang inspiratif, inklusif, dan relevan bagi generasi muda Jawa Timur dan Indonesia.',
-                        style: TextStyle(fontSize: 11.5, color: textMuted, height: 1.5),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: textMuted,
+                          height: 1.5,
+                        ),
                       ),
                     ],
                   ),
@@ -363,19 +483,38 @@ class _TentangScreenState extends State<TentangScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: borderLight)),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: borderLight),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Misi', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textDark)),
+                      const Text(
+                        'Misi',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: textDark,
+                        ),
+                      ),
                       const SizedBox(height: 12),
-                      _buildBulletMission('Melestarikan dan merawat koleksi benda peninggalan bersejarah.'),
+                      _buildBulletMission(
+                        'Melestarikan dan merawat koleksi benda peninggalan bersejarah.',
+                      ),
                       const SizedBox(height: 8),
-                      _buildBulletMission("Mengedukasi generasi muda tentang nilai-nilai patriotisme dan perjuangan '45."),
+                      _buildBulletMission(
+                        "Mengedukasi generasi muda tentang nilai-nilai patriotisme dan perjuangan '45.",
+                      ),
                       const SizedBox(height: 8),
-                      _buildBulletMission('Meningkatkan aksesibilitas informasi digital dan fasilitas kunjungan.'),
+                      _buildBulletMission(
+                        'Meningkatkan aksesibilitas informasi digital dan fasilitas kunjungan.',
+                      ),
                       const SizedBox(height: 8),
-                      _buildBulletMission('Menjaga keutuhan narasi sejarah perjuangan kemerdekaan Jawa Timur.'),
+                      _buildBulletMission(
+                        'Menjaga keutuhan narasi sejarah perjuangan kemerdekaan Jawa Timur.',
+                      ),
                     ],
                   ),
                 ),
@@ -405,7 +544,11 @@ class _TentangScreenState extends State<TentangScreen> {
                     children: [
                       Row(
                         children: const [
-                          Icon(Icons.location_on_outlined, size: 20, color: darkGreen),
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 20,
+                            color: darkGreen,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Lokasi & Rute Museum',
@@ -420,71 +563,56 @@ class _TentangScreenState extends State<TentangScreen> {
                       const SizedBox(height: 8),
                       const Text(
                         'Jl. Ijen No.25A, Gading Kasri, Kec. Klojen, Kota Malang, Jawa Timur 65115',
-                        style: TextStyle(fontSize: 11.5, color: textMuted, height: 1.4),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: textMuted,
+                          height: 1.4,
+                        ),
                       ),
                       const SizedBox(height: 14),
 
                       // Container Gambar Maps / Ilustrasi Denah
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: Container(
+                        child: SizedBox(
                           width: double.infinity,
                           height: 180,
-                          color: const Color(0xFFEFECE6),
-                          child: Stack(
-                            fit: StackFit.expand,
+                          child: FlutterMap(
+                            options: const MapOptions(
+                              initialCenter: LatLng(-7.9719938, 112.6209786),
+                              initialZoom: 16,
+                            ),
                             children: [
-                              Image.asset(
-                                'assets/images/maps_museum_brawijaya.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: const Color(0xFFE2DDD5),
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: const [
-                                          Icon(Icons.map_rounded, size: 44, color: darkGreen),
-                                          SizedBox(height: 6),
-                                          Text(
-                                            'Peta Museum Brawijaya Malang',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: textDark,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Kawasan Wisata Bersejarah Jl. Ijen',
-                                            style: TextStyle(fontSize: 10, color: textMuted),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
+                              TileLayer(
+                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName:
+                                    'com.example.museum_brawijaya',
+                                maxNativeZoom: 19,
                               ),
-                              Positioned(
-                                top: 12,
-                                right: 12,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: darkGreen,
-                                    borderRadius: BorderRadius.circular(20),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: const LatLng(
+                                      -7.9719938,
+                                      112.6209786,
+                                    ),
+                                    width: 44,
+                                    height: 44,
+                                    alignment: Alignment.bottomCenter,
+                                    child: const Icon(
+                                      Icons.location_pin,
+                                      size: 44,
+                                      color: Color(0xFFB63D32),
+                                    ),
                                   ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.near_me, size: 12, color: goldAccent),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Pusat Kota Malang',
-                                        style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
+                                ],
+                              ),
+                              RichAttributionWidget(
+                                attributions: [
+                                  TextSourceAttribution(
+                                    '© OpenStreetMap contributors',
                                   ),
-                                ),
+                                ],
                               ),
                             ],
                           ),
@@ -495,16 +623,33 @@ class _TentangScreenState extends State<TentangScreen> {
                       // Tombol Buka di Google Maps
                       ElevatedButton.icon(
                         onPressed: () async {
-                          final uri = Uri.parse('https://maps.app.goo.gl/9R6K4d5y3hRswFvF8');
+                          final uri = Uri.https(
+                            'www.google.com',
+                            '/maps/search/',
+                            {'api': '1', 'query': 'Museum Brawijaya Malang'},
+                          );
                           try {
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            final launched = await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
+                            if (!launched && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Tidak dapat membuka lokasi Museum Brawijaya.',
+                                  ),
+                                  backgroundColor: darkGreen,
+                                ),
+                              );
                             }
-                          } catch (_) {
+                          } on PlatformException {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Membuka tautan peta Museum Brawijaya di browser...'),
+                                  content: Text(
+                                    'Terjadi kesalahan saat membuka lokasi Museum Brawijaya.',
+                                  ),
                                   backgroundColor: darkGreen,
                                 ),
                               );
@@ -514,7 +659,10 @@ class _TentangScreenState extends State<TentangScreen> {
                         icon: const Icon(Icons.directions, size: 18),
                         label: const Text(
                           'Buka Lokasi di Google Maps',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: darkGreen,
@@ -538,8 +686,23 @@ class _TentangScreenState extends State<TentangScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: const [
-                    Text('Galeri Museum', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textDark)),
-                    Text('6 FOTO PILIHAN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: goldAccent, letterSpacing: 0.8)),
+                    Text(
+                      'Galeri Museum',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                      ),
+                    ),
+                    Text(
+                      '6 FOTO PILIHAN',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: goldAccent,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -547,16 +710,37 @@ class _TentangScreenState extends State<TentangScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: GridView.count(
-                  crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12,
-                  childAspectRatio: 1.3, shrinkWrap: true,
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.3,
+                  shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
-                    _buildGalleryCard('assets/images/collection/menu_gerbong_maut.png', 'Gerbong Maut'),
-                    _buildGalleryCard('assets/images/collection/peta_operasi_militer.png', 'Peta Operasi Militer'),
-                    _buildGalleryCard('assets/images/collection/diorama_pertempuran.png', 'Diorama Pertempuran'),
-                    _buildGalleryCard('assets/images/museum_brawijaya.jpg', 'Museum Brawijaya'),
-                    _buildGalleryCard('assets/images/collection/menu_mobil_dinas_letkol.png', 'Mobil Dinas Letkol'),
-                    _buildGalleryCard('assets/images/collection/menu_perahu_segigir.png', 'Perahu Segigir'),
+                    _buildGalleryCard(
+                      'assets/images/collection/menu_gerbong_maut.png',
+                      'Gerbong Maut',
+                    ),
+                    _buildGalleryCard(
+                      'assets/images/collection/peta_operasi_militer.png',
+                      'Peta Operasi Militer',
+                    ),
+                    _buildGalleryCard(
+                      'assets/images/collection/diorama_pertempuran.png',
+                      'Diorama Pertempuran',
+                    ),
+                    _buildGalleryCard(
+                      'assets/images/museum_brawijaya.jpg',
+                      'Museum Brawijaya',
+                    ),
+                    _buildGalleryCard(
+                      'assets/images/collection/menu_mobil_dinas_letkol.png',
+                      'Mobil Dinas Letkol',
+                    ),
+                    _buildGalleryCard(
+                      'assets/images/collection/menu_perahu_segigir.png',
+                      'Perahu Segigir',
+                    ),
                   ],
                 ),
               ),
@@ -568,8 +752,23 @@ class _TentangScreenState extends State<TentangScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: const [
-                    Text('Ulasan Pengunjung', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textDark)),
-                    Text('RATING & KESAN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: goldAccent, letterSpacing: 0.8)),
+                    Text(
+                      'Ulasan Pengunjung',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                      ),
+                    ),
+                    Text(
+                      'RATING & KESAN',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: goldAccent,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -584,7 +783,13 @@ class _TentangScreenState extends State<TentangScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: borderLight),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 3))],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
@@ -592,21 +797,40 @@ class _TentangScreenState extends State<TentangScreen> {
                         children: [
                           Text(
                             _averageRating.toStringAsFixed(1),
-                            style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold, color: textDark, height: 1),
+                            style: const TextStyle(
+                              fontSize: 42,
+                              fontWeight: FontWeight.bold,
+                              color: textDark,
+                              height: 1,
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Row(
                             children: List.generate(5, (i) {
                               final full = i < _averageRating.floor();
-                              final half = !full && (i < _averageRating && _averageRating - i >= 0.5);
+                              final half =
+                                  !full &&
+                                  (i < _averageRating &&
+                                      _averageRating - i >= 0.5);
                               return Icon(
-                                full ? Icons.star : (half ? Icons.star_half : Icons.star_border),
-                                color: goldAccent, size: 14,
+                                full
+                                    ? Icons.star
+                                    : (half
+                                          ? Icons.star_half
+                                          : Icons.star_border),
+                                color: goldAccent,
+                                size: 14,
                               );
                             }),
                           ),
                           const SizedBox(height: 4),
-                          Text('${_reviews.length} ulasan', style: const TextStyle(fontSize: 10, color: textMuted)),
+                          Text(
+                            '${_reviews.length} ulasan',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: textMuted,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(width: 20),
@@ -616,7 +840,10 @@ class _TentangScreenState extends State<TentangScreen> {
                             final star = 5 - i;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 5),
-                              child: _buildRatingBar(star, _ratingFraction(star)),
+                              child: _buildRatingBar(
+                                star,
+                                _ratingFraction(star),
+                              ),
                             );
                           }),
                         ),
@@ -639,20 +866,24 @@ class _TentangScreenState extends State<TentangScreen> {
                     decoration: BoxDecoration(
                       color: _showForm ? const Color(0xFFEFECE6) : darkGreen,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: _showForm ? borderLight : darkGreen),
+                      border: Border.all(
+                        color: _showForm ? borderLight : darkGreen,
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           _showForm ? Icons.close : Icons.edit_note_rounded,
-                          color: _showForm ? textMuted : Colors.white, size: 20,
+                          color: _showForm ? textMuted : Colors.white,
+                          size: 20,
                         ),
                         const SizedBox(width: 8),
                         Text(
                           _showForm ? 'Batalkan' : 'Tulis Ulasan Anda',
                           style: TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                             color: _showForm ? textMuted : Colors.white,
                           ),
                         ),
@@ -675,13 +906,23 @@ class _TentangScreenState extends State<TentangScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Column(
-                  children: _reviews.map((r) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildReviewCard(
-                      name: r.name, date: r.date, rating: r.rating,
-                      comment: r.comment, avatarInitial: r.avatarInitial, avatarColor: r.avatarColor,
-                    ),
-                  )).toList(),
+                  children: _reviews
+                      .map(
+                        (r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildReviewCard(
+                            name: r.name,
+                            date: r.date,
+                            rating: r.rating,
+                            comment: r.comment,
+                            avatarInitial: r.avatarInitial,
+                            avatarColor: r.avatarColor,
+                            reply: r.reply,
+                            replyDate: r.replyDate,
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
 
@@ -703,7 +944,13 @@ class _TentangScreenState extends State<TentangScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: borderLight),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Form(
           key: _formKey,
@@ -714,27 +961,45 @@ class _TentangScreenState extends State<TentangScreen> {
                 children: [
                   Icon(Icons.rate_review_outlined, color: darkGreen, size: 18),
                   SizedBox(width: 8),
-                  Text('Bagikan Pengalaman Anda', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textDark)),
+                  Text(
+                    'Bagikan Pengalaman Anda',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: textDark,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
 
               // Pilih Rating Bintang
-              const Text('Rating', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textMuted)),
+              const Text(
+                'Rating',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: textMuted,
+                ),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: List.generate(5, (i) {
                   final starIndex = i + 1;
-                  final filled = starIndex <= (_hoverRating > 0 ? _hoverRating : _selectedRating);
+                  final filled =
+                      starIndex <=
+                      (_hoverRating > 0 ? _hoverRating : _selectedRating);
                   return GestureDetector(
                     onTap: () => setState(() => _selectedRating = starIndex),
                     child: MouseRegion(
                       onEnter: (_) => setState(() => _hoverRating = starIndex),
-                      onExit:  (_) => setState(() => _hoverRating = 0),
+                      onExit: (_) => setState(() => _hoverRating = 0),
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 150),
                         child: Icon(
-                          filled ? Icons.star_rounded : Icons.star_border_rounded,
+                          filled
+                              ? Icons.star_rounded
+                              : Icons.star_border_rounded,
                           key: ValueKey('$starIndex-$filled'),
                           color: filled ? goldAccent : borderLight,
                           size: 36,
@@ -749,21 +1014,36 @@ class _TentangScreenState extends State<TentangScreen> {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     _ratingLabel(_selectedRating),
-                    style: const TextStyle(fontSize: 11, color: goldAccent, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: goldAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               const SizedBox(height: 16),
 
               // Input Nama
-              const Text('Nama Anda', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textMuted)),
+              const Text(
+                'Nama Anda',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: textMuted,
+                ),
+              ),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _nameController,
                 textInputAction: TextInputAction.next,
                 style: const TextStyle(fontSize: 13, color: textDark),
-                decoration: _inputDecoration('Masukkan nama Anda', Icons.person_outline),
+                decoration: _inputDecoration(
+                  'Masukkan nama Anda',
+                  Icons.person_outline,
+                ),
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Nama tidak boleh kosong';
+                  if (v == null || v.trim().isEmpty)
+                    return 'Nama tidak boleh kosong';
                   if (v.trim().length < 2) return 'Nama minimal 2 karakter';
                   return null;
                 },
@@ -771,15 +1051,26 @@ class _TentangScreenState extends State<TentangScreen> {
               const SizedBox(height: 16),
 
               // Input Komentar
-              const Text('Ulasan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textMuted)),
+              const Text(
+                'Ulasan',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: textMuted,
+                ),
+              ),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _commentController,
                 maxLines: 4,
                 style: const TextStyle(fontSize: 13, color: textDark),
-                decoration: _inputDecoration('Ceritakan pengalaman kunjungan Anda...', null),
+                decoration: _inputDecoration(
+                  'Ceritakan pengalaman kunjungan Anda...',
+                  null,
+                ),
                 validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Ulasan tidak boleh kosong';
+                  if (v == null || v.trim().isEmpty)
+                    return 'Ulasan tidak boleh kosong';
                   if (v.trim().length < 10) return 'Ulasan minimal 10 karakter';
                   return null;
                 },
@@ -796,20 +1087,34 @@ class _TentangScreenState extends State<TentangScreen> {
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: const Color(0xFF8A9A8B),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                   ),
                   child: _isSubmitting
                       ? const SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
                         )
                       : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.send_rounded, size: 18),
                             SizedBox(width: 8),
-                            Text('Kirim Ulasan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                            Text(
+                              'Kirim Ulasan',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                 ),
@@ -825,26 +1130,49 @@ class _TentangScreenState extends State<TentangScreen> {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(fontSize: 12, color: Color(0xFFA0A7A0)),
-      prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: textMuted, size: 18) : null,
+      prefixIcon: prefixIcon != null
+          ? Icon(prefixIcon, color: textMuted, size: 18)
+          : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       filled: true,
       fillColor: const Color(0xFFF7F5F0),
-      border:             OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: borderLight)),
-      enabledBorder:      OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: borderLight)),
-      focusedBorder:      OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: darkGreen, width: 1.5)),
-      errorBorder:        OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.2)),
-      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent, width: 1.5)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: borderLight),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: borderLight),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: darkGreen, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+      ),
     );
   }
 
   String _ratingLabel(int rating) {
     switch (rating) {
-      case 1: return 'Kurang Memuaskan';
-      case 2: return 'Cukup';
-      case 3: return 'Lumayan';
-      case 4: return 'Bagus';
-      case 5: return 'Sangat Memuaskan!';
-      default: return '';
+      case 1:
+        return 'Kurang Memuaskan';
+      case 2:
+        return 'Cukup';
+      case 3:
+        return 'Lumayan';
+      case 4:
+        return 'Bagus';
+      case 5:
+        return 'Sangat Memuaskan!';
+      default:
+        return '';
     }
   }
 
@@ -859,7 +1187,8 @@ class _TentangScreenState extends State<TentangScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: fraction, minHeight: 6,
+              value: fraction,
+              minHeight: 6,
               backgroundColor: borderLight,
               valueColor: const AlwaysStoppedAnimation<Color>(goldAccent),
             ),
@@ -870,8 +1199,14 @@ class _TentangScreenState extends State<TentangScreen> {
   }
 
   Widget _buildReviewCard({
-    required String name, required String date, required int rating,
-    required String comment, required String avatarInitial, required Color avatarColor,
+    required String name,
+    required String date,
+    required int rating,
+    required String comment,
+    required String avatarInitial,
+    required Color avatarColor,
+    String reply = '',
+    String replyDate = '',
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -879,7 +1214,13 @@ class _TentangScreenState extends State<TentangScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderLight),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -887,34 +1228,121 @@ class _TentangScreenState extends State<TentangScreen> {
           Row(
             children: [
               CircleAvatar(
-                radius: 18, backgroundColor: avatarColor,
-                child: Text(avatarInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                radius: 18,
+                backgroundColor: avatarColor,
+                child: Text(
+                  avatarInitial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textDark)),
-                    Text(date, style: const TextStyle(fontSize: 10, color: textMuted)),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: textDark,
+                      ),
+                    ),
+                    Text(
+                      date,
+                      style: const TextStyle(fontSize: 10, color: textMuted),
+                    ),
                   ],
                 ),
               ),
-              Row(children: List.generate(rating, (_) => const Icon(Icons.star, color: goldAccent, size: 13))),
+              Row(
+                children: List.generate(
+                  rating,
+                  (_) => const Icon(Icons.star, color: goldAccent, size: 13),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(comment, style: const TextStyle(fontSize: 11.5, color: textMuted, height: 1.5)),
+          Text(
+            comment,
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: textMuted,
+              height: 1.5,
+            ),
+          ),
+          if (reply.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F5F0),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderLight),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.subdirectory_arrow_right,
+                        size: 14,
+                        color: darkGreen,
+                      ),
+                      const SizedBox(width: 5),
+                      const Expanded(
+                        child: Text(
+                          'Balasan Tim Museum',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: darkGreen,
+                          ),
+                        ),
+                      ),
+                      if (replyDate.isNotEmpty)
+                        Text(
+                          replyDate,
+                          style: const TextStyle(fontSize: 9, color: textMuted),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    reply,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: textMuted,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildTimelineItem(String year, String label, bool isActive, {bool isLast = false}) {
+  Widget _buildTimelineItem(
+    String year,
+    String label,
+    bool isActive, {
+    bool isLast = false,
+  }) {
     return Column(
       children: [
         Container(
-          width: 22, height: 22,
+          width: 22,
+          height: 22,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isLast ? textDark : goldAccent,
@@ -922,24 +1350,53 @@ class _TentangScreenState extends State<TentangScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        Text(year, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textDark)),
+        Text(
+          year,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: textDark,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 8.5, color: textMuted, height: 1.2)),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 8.5, color: textMuted, height: 1.2),
+        ),
       ],
     );
   }
 
   Widget _buildTimelineLine() {
-    return Expanded(child: Container(height: 2, color: borderLight, margin: const EdgeInsets.only(bottom: 25)));
+    return Expanded(
+      child: Container(
+        height: 2,
+        color: borderLight,
+        margin: const EdgeInsets.only(bottom: 25),
+      ),
+    );
   }
 
   Widget _buildBulletMission(String text) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(padding: EdgeInsets.only(top: 5.0), child: Icon(Icons.circle, size: 6, color: goldAccent)),
+        const Padding(
+          padding: EdgeInsets.only(top: 5.0),
+          child: Icon(Icons.circle, size: 6, color: goldAccent),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 11.5, color: textMuted, height: 1.4))),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: textMuted,
+              height: 1.4,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -951,23 +1408,37 @@ class _TentangScreenState extends State<TentangScreen> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            imagePath, fit: BoxFit.cover,
+            imagePath,
+            fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => Container(
               color: Colors.grey.shade300,
               child: const Icon(Icons.image_not_supported, color: Colors.grey),
             ),
           ),
           Positioned(
-            bottom: 0, left: 0, right: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                  colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.7),
+                    Colors.transparent,
+                  ],
                 ),
               ),
-              child: Text(caption, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+              child: Text(
+                caption,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],

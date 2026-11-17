@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../services/tiket_service.dart';
 
 class TiketScreen extends StatefulWidget {
@@ -16,8 +16,12 @@ class _TiketScreenState extends State<TiketScreen> {
   int _currentStep = 0;
 
   final TextEditingController _namaController = TextEditingController(text: '');
-  final TextEditingController _emailController = TextEditingController(text: '');
-  final TextEditingController _phoneController = TextEditingController(text: '');
+  final TextEditingController _emailController = TextEditingController(
+    text: '',
+  );
+  final TextEditingController _phoneController = TextEditingController(
+    text: '',
+  );
   String _selectedCountryCode = '+62';
   String _selectedCountryFlag = '🇮🇩';
 
@@ -56,18 +60,18 @@ class _TiketScreenState extends State<TiketScreen> {
   // State backend
   bool _loadingCategories = true;
   bool _submitting = false;
+  bool _openingPayment = false;
   TicketBooking? _booking;
-
-  // Countdown timer (15 menit)
-  Timer? _countdownTimer;
-  int _secondsLeft = 15 * 60;
+  Uri? _paymentUri;
 
   // Deteksi Wisatawan Mancanegara berdasarkan kode negara nomor telepon
   bool get _isMancanegara {
     if (_selectedCountryCode != '+62') return true;
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) return false;
-    if (phone.startsWith('+62') || phone.startsWith('08') || phone.startsWith('62')) {
+    if (phone.startsWith('+62') ||
+        phone.startsWith('08') ||
+        phone.startsWith('62')) {
       return false;
     }
     return false;
@@ -97,12 +101,6 @@ class _TiketScreenState extends State<TiketScreen> {
   String get _apiDate {
     final d = _selectedDate;
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
-
-  String get _countdownFormatted {
-    final m = _secondsLeft ~/ 60;
-    final s = _secondsLeft % 60;
-    return '${m.toString().padLeft(2, '0')} : ${s.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -135,28 +133,14 @@ class _TiketScreenState extends State<TiketScreen> {
     }
   }
 
-  void _startCountdown() {
-    _countdownTimer?.cancel();
-    _secondsLeft = 15 * 60;
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_secondsLeft <= 0) {
-        t.cancel();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Waktu pembayaran habis. Silakan pesan ulang.'), backgroundColor: Colors.red),
-          );
-          setState(() => _currentStep = 0);
-        }
-      } else {
-        if (mounted) setState(() => _secondsLeft--);
-      }
-    });
-  }
-
   Future<void> _handleBayar() async {
-    if (_namaController.text.trim().isEmpty || _emailController.text.trim().isEmpty) {
+    if (_namaController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama dan email wajib diisi'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Nama dan email wajib diisi'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -164,7 +148,10 @@ class _TiketScreenState extends State<TiketScreen> {
     final totalTiket = _isMancanegara ? _qtyWna : (_qtyDewasa + _qtyPelajar);
     if (totalTiket == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih minimal 1 tiket'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Pilih minimal 1 tiket'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -186,10 +173,10 @@ class _TiketScreenState extends State<TiketScreen> {
       if (!mounted) return;
       setState(() {
         _booking = booking;
+        _paymentUri = null;
         _currentStep = 1;
         _submitting = false;
       });
-      _startCountdown();
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -199,16 +186,41 @@ class _TiketScreenState extends State<TiketScreen> {
     }
   }
 
-  Future<void> _copyToClipboard(String text) async {
-    await Clipboard.setData(ClipboardData(text: text));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Disalin: $text'),
-          duration: const Duration(seconds: 2),
-          backgroundColor: const Color(0xFF3F5243),
-        ),
+  Future<void> _openPayment() async {
+    final booking = _booking;
+    if (booking == null || _openingPayment) return;
+
+    setState(() => _openingPayment = true);
+    try {
+      var paymentUri = _paymentUri;
+      if (paymentUri == null) {
+        paymentUri = await TiketService.createPayment(booking.id);
+        if (!mounted) return;
+        setState(() => _paymentUri = paymentUri);
+      }
+
+      final launched = await launchUrl(
+        paymentUri,
+        mode: LaunchMode.externalApplication,
       );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Halaman pembayaran tidak dapat dibuka. Silakan coba lagi.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _openingPayment = false);
     }
   }
 
@@ -234,7 +246,6 @@ class _TiketScreenState extends State<TiketScreen> {
 
   @override
   void dispose() {
-    _countdownTimer?.cancel();
     _namaController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -396,12 +407,19 @@ class _TiketScreenState extends State<TiketScreen> {
               _buildPhoneInputField(),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: _isMancanegara ? const Color(0xFFF3E8FF) : const Color(0xFFECFDF5),
+                  color: _isMancanegara
+                      ? const Color(0xFFF3E8FF)
+                      : const Color(0xFFECFDF5),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: _isMancanegara ? const Color(0xFFC084FC) : const Color(0xFF6EE7B7),
+                    color: _isMancanegara
+                        ? const Color(0xFFC084FC)
+                        : const Color(0xFF6EE7B7),
                   ),
                 ),
                 child: Row(
@@ -409,7 +427,9 @@ class _TiketScreenState extends State<TiketScreen> {
                     Icon(
                       _isMancanegara ? Icons.public : Icons.flag,
                       size: 16,
-                      color: _isMancanegara ? const Color(0xFF7E22CE) : const Color(0xFF047857),
+                      color: _isMancanegara
+                          ? const Color(0xFF7E22CE)
+                          : const Color(0xFF047857),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -420,7 +440,9 @@ class _TiketScreenState extends State<TiketScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _isMancanegara ? const Color(0xFF7E22CE) : const Color(0xFF047857),
+                          color: _isMancanegara
+                              ? const Color(0xFF7E22CE)
+                              : const Color(0xFF047857),
                         ),
                       ),
                     ),
@@ -480,17 +502,27 @@ class _TiketScreenState extends State<TiketScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFF4F5F3),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFCBB26A)),
+                              border: Border.all(
+                                color: const Color(0xFFCBB26A),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   _formattedDate,
-                                  style: TextStyle(fontSize: 12, color: textDark, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textDark,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 const SizedBox(width: 6),
-                                const Icon(Icons.edit_calendar_outlined, size: 14, color: Color(0xFF3F5243)),
+                                const Icon(
+                                  Icons.edit_calendar_outlined,
+                                  size: 14,
+                                  color: Color(0xFF3F5243),
+                                ),
                               ],
                             ),
                           ),
@@ -579,7 +611,13 @@ class _TiketScreenState extends State<TiketScreen> {
               ),
               const SizedBox(height: 16),
               if (_loadingCategories)
-                const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)))
+                const Center(
+                  child: SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
               else if (_isMancanegara) ...[
                 // Khusus Wisatawan Mancanegara
                 _buildQtyRow(
@@ -592,7 +630,11 @@ class _TiketScreenState extends State<TiketScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Kategori khusus wisatawan dari luar negeri.',
-                  style: TextStyle(fontSize: 10, color: textMuted, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: textMuted,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ] else ...[
                 // Khusus Wisatawan Dalam Negeri (Domestik)
@@ -647,10 +689,14 @@ class _TiketScreenState extends State<TiketScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _paymentMethod == 'CREDIT_CARD' ? const Color(0xFFF3E8FF) : Colors.white,
+                      color: _paymentMethod == 'CREDIT_CARD'
+                          ? const Color(0xFFF3E8FF)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: _paymentMethod == 'CREDIT_CARD' ? const Color(0xFF7E22CE) : borderLight,
+                        color: _paymentMethod == 'CREDIT_CARD'
+                            ? const Color(0xFF7E22CE)
+                            : borderLight,
                         width: 1.5,
                       ),
                     ),
@@ -661,7 +707,8 @@ class _TiketScreenState extends State<TiketScreen> {
                           groupValue: _paymentMethod,
                           activeColor: const Color(0xFF7E22CE),
                           onChanged: (val) {
-                            if (val != null) setState(() => _paymentMethod = val);
+                            if (val != null)
+                              setState(() => _paymentMethod = val);
                           },
                         ),
                         const SizedBox(width: 6),
@@ -680,7 +727,10 @@ class _TiketScreenState extends State<TiketScreen> {
                               SizedBox(height: 2),
                               Text(
                                 'Metode pembayaran resmi untuk wisatawan internasional',
-                                style: TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             ],
                           ),
@@ -688,21 +738,41 @@ class _TiketScreenState extends State<TiketScreen> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF1E3A8A),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text('VISA', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              child: const Text(
+                                'VISA',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFDC2626),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text('MC', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              child: const Text(
+                                'MC',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -737,7 +807,8 @@ class _TiketScreenState extends State<TiketScreen> {
                                 groupValue: _paymentMethod,
                                 activeColor: darkGreen,
                                 onChanged: (val) {
-                                  if (val != null) setState(() => _paymentMethod = val);
+                                  if (val != null)
+                                    setState(() => _paymentMethod = val);
                                 },
                               ),
                               Column(
@@ -789,7 +860,8 @@ class _TiketScreenState extends State<TiketScreen> {
                                 groupValue: _paymentMethod,
                                 activeColor: darkGreen,
                                 onChanged: (val) {
-                                  if (val != null) setState(() => _paymentMethod = val);
+                                  if (val != null)
+                                    setState(() => _paymentMethod = val);
                                 },
                               ),
                               Column(
@@ -846,9 +918,14 @@ class _TiketScreenState extends State<TiketScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color: _isMancanegara ? const Color(0xFF7E22CE) : goldAccent,
+                        color: _isMancanegara
+                            ? const Color(0xFF7E22CE)
+                            : goldAccent,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -924,7 +1001,9 @@ class _TiketScreenState extends State<TiketScreen> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.black,
+                            ),
                           ),
                         )
                       : Row(
@@ -983,7 +1062,7 @@ class _TiketScreenState extends State<TiketScreen> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Selesaikan pembayaran sebelum batas waktu berakhir. E-tiket resmi akan dikirim melalui Email / WhatsApp setelah pembayaran diverifikasi.',
+                  'Lanjutkan pembayaran melalui halaman Midtrans. E-tiket resmi akan dikirim melalui Email / WhatsApp setelah pembayaran diverifikasi.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 11, color: textMuted),
                 ),
@@ -995,50 +1074,15 @@ class _TiketScreenState extends State<TiketScreen> {
             cardBg,
             borderLight,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'SISA WAKTU PEMBAYARAN',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: textMuted,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        _countdownFormatted,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: _secondsLeft < 60 ? Colors.red.shade800 : Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Batas Waktu',
-                        style: TextStyle(fontSize: 10, color: textMuted),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '20 Sep 2026, 08:15 WIB',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: textDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              const Icon(
+                Icons.info_outline,
+                size: 20,
+                color: Color(0xFF3F5243),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Selesaikan pembayaran pada halaman Midtrans. Status pembayaran akan diperbarui setelah notifikasi diterima backend.',
+                style: TextStyle(fontSize: 11, color: textMuted),
               ),
             ],
           ),
@@ -1046,247 +1090,65 @@ class _TiketScreenState extends State<TiketScreen> {
           _buildCardSection(
             cardBg,
             borderLight,
-            children: _paymentMethod == 'QRIS'
-                ? [
-                    // ── HEADER QRIS ──────────────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.qr_code_2, size: 20, color: textDark),
-                            SizedBox(width: 8),
-                            Text(
-                              'Pembayaran via QRIS',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE8F5E9),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Otomatis',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.lock_outline,
+                    size: 20,
+                    color: Color(0xFF3F5243),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Pembayaran aman melalui Midtrans',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: textDark,
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Scan menggunakan GoPay, OVO, ShopeePay, DANA, atau M-Banking',
-                      style: TextStyle(fontSize: 10, color: textMuted),
-                    ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: Container(
-                        width: 220,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Pilih QRIS, transfer bank, atau metode lain yang tersedia di halaman pembayaran Midtrans.',
+                style: TextStyle(fontSize: 11, color: textMuted),
+              ),
+              const SizedBox(height: 16),
+              _buildDetailInfoRow('Kode Pesanan', _booking?.id ?? '-'),
+              _buildDetailInfoRow(
+                'Total Tagihan',
+                'Rp ${_booking?.totalBiaya ?? 0}',
+                isBoldPrice: true,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _openingPayment ? null : _openPayment,
+                icon: _openingPayment
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: borderLight),
                         ),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 150,
-                              height: 150,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE5E7EB),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.qr_code, size: 60, color: textMuted),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'QR CODE QRIS',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'NMID: ID10202688910',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                            Text(
-                              'Museum Brawijaya Official',
-                              style: TextStyle(fontSize: 9, color: textMuted),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDetailInfoRow('Kode Pesanan', _booking?.id ?? '#MBW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'),
-                    _buildDetailInfoRow(
-                      'Total Tagihan',
-                      'Rp ${_booking != null ? _booking!.totalBiaya.toString() : _totalBayar.toString()}',
-                      isBoldPrice: true,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Status: Menunggu Pembayaran. Harap selesaikan pembayaran.'),
-                            backgroundColor: Colors.teal,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: const Text('Cek Status Pembayaran'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: darkGreen,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ]
-                : [
-                    // ── HEADER TRANSFER BANK ─────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.account_balance, size: 20, color: textDark),
-                            SizedBox(width: 8),
-                            Text(
-                              'Transfer Bank',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: textDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF8E1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Manual',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.orange,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Pilih salah satu bank dan transfer sesuai nominal tagihan',
-                      style: TextStyle(fontSize: 10, color: textMuted),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── KARTU BCA ────────────────────────────────────────
-                    _buildBankCard(
-                      bankName: 'BCA',
-                      accountNumber: '1234 5678 9012',
-                      accountName: 'Museum Brawijaya',
-                      bankColor: const Color(0xFF005BAC),
-                      logoIcon: Icons.account_balance,
-                      cardBg: cardBg,
-                      borderLight: borderLight,
-                      textDark: textDark,
-                      textMuted: textMuted,
-                    ),
-                    const SizedBox(height: 10),
-
-                    // ── KARTU MANDIRI ────────────────────────────────────
-                    _buildBankCard(
-                      bankName: 'Mandiri',
-                      accountNumber: '1400 0012 3456 789',
-                      accountName: 'Museum Brawijaya',
-                      bankColor: const Color(0xFF003087),
-                      logoIcon: Icons.account_balance,
-                      cardBg: cardBg,
-                      borderLight: borderLight,
-                      textDark: textDark,
-                      textMuted: textMuted,
-                    ),
-                    const SizedBox(height: 10),
-
-                    // ── KARTU BNI ─────────────────────────────────────────
-                    _buildBankCard(
-                      bankName: 'BNI',
-                      accountNumber: '0123 4567 89',
-                      accountName: 'Museum Brawijaya',
-                      bankColor: const Color(0xFFFF6200),
-                      logoIcon: Icons.account_balance,
-                      cardBg: cardBg,
-                      borderLight: borderLight,
-                      textDark: textDark,
-                      textMuted: textMuted,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDetailInfoRow('Kode Pesanan', _booking?.id ?? '#MBW-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'),
-                    _buildDetailInfoRow(
-                      'Total Tagihan',
-                      'Rp ${_booking != null ? _booking!.totalBiaya.toString() : _totalBayar.toString()}',
-                      isBoldPrice: true,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Konfirmasi diterima! Pembayaran Anda sedang diverifikasi admin. E-tiket akan dikirim ke Email & WhatsApp.'),
-                            backgroundColor: Colors.teal,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.check_circle_outline, size: 16),
-                      label: const Text('Konfirmasi Pembayaran'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: darkGreen,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 46),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ],
+                      )
+                    : const Icon(Icons.open_in_new, size: 16),
+                label: Text(
+                  _openingPayment
+                      ? 'Menghubungkan ke Midtrans...'
+                      : 'Lanjutkan Pembayaran',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: darkGreen,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 46),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           // Info notifikasi E-Tiket via Email & WhatsApp
@@ -1314,7 +1176,11 @@ class _TiketScreenState extends State<TiketScreen> {
                         color: const Color(0xFFECFDF5),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.mark_email_read_outlined, color: Color(0xFF047857), size: 24),
+                      child: const Icon(
+                        Icons.mark_email_read_outlined,
+                        color: Color(0xFF047857),
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1350,12 +1216,20 @@ class _TiketScreenState extends State<TiketScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.email, size: 16, color: Color(0xFF3F5243)),
+                          const Icon(
+                            Icons.email,
+                            size: 16,
+                            color: Color(0xFF3F5243),
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Email: ${_emailController.text.isNotEmpty ? _emailController.text : "Email Anda"}',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF2C322B)),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2C322B),
+                              ),
                             ),
                           ),
                         ],
@@ -1363,12 +1237,20 @@ class _TiketScreenState extends State<TiketScreen> {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.phone_android, size: 16, color: Color(0xFF047857)),
+                          const Icon(
+                            Icons.phone_android,
+                            size: 16,
+                            color: Color(0xFF047857),
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'WhatsApp: ${_fullPhoneNumber.isNotEmpty ? _fullPhoneNumber : "Nomor WhatsApp Anda"}',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF2C322B)),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2C322B),
+                              ),
                             ),
                           ),
                         ],
@@ -1382,7 +1264,11 @@ class _TiketScreenState extends State<TiketScreen> {
                   child: Center(
                     child: Text(
                       '← Kembali ke Formulir Pemesanan',
-                      style: TextStyle(color: darkGreen, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: darkGreen,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -1531,18 +1417,27 @@ class _TiketScreenState extends State<TiketScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Text(
                       'Pilih Kode Negara',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     child: TextField(
                       controller: searchCtrl,
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.search, size: 20),
                         hintText: 'Cari negara atau kode...',
                         hintStyle: const TextStyle(fontSize: 13),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                         filled: true,
                         fillColor: const Color(0xFFF4F5F3),
                         border: OutlineInputBorder(
@@ -1569,14 +1464,25 @@ class _TiketScreenState extends State<TiketScreen> {
                         final item = filtered[idx];
                         final isSelected = item['code'] == _selectedCountryCode;
                         return ListTile(
-                          leading: Text(item['flag'] ?? '', style: const TextStyle(fontSize: 22)),
-                          title: Text(item['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                          leading: Text(
+                            item['flag'] ?? '',
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                          title: Text(
+                            item['name'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                           trailing: Text(
                             item['code'] ?? '',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? const Color(0xFF3F5243) : Colors.grey.shade600,
+                              color: isSelected
+                                  ? const Color(0xFF3F5243)
+                                  : Colors.grey.shade600,
                             ),
                           ),
                           onTap: () {
@@ -1622,20 +1528,35 @@ class _TiketScreenState extends State<TiketScreen> {
               // Dropdown negara dengan bendera dan tanda kebawah
               InkWell(
                 onTap: _showCountryPicker,
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(10),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 12,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(_selectedCountryFlag, style: const TextStyle(fontSize: 18)),
+                      Text(
+                        _selectedCountryFlag,
+                        style: const TextStyle(fontSize: 18),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         _selectedCountryCode,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 2),
-                      const Icon(Icons.arrow_drop_down, size: 18, color: Color(0xFF727A71)),
+                      const Icon(
+                        Icons.arrow_drop_down,
+                        size: 18,
+                        color: Color(0xFF727A71),
+                      ),
                     ],
                   ),
                 ),
@@ -1649,8 +1570,14 @@ class _TiketScreenState extends State<TiketScreen> {
                   style: const TextStyle(fontSize: 12),
                   decoration: const InputDecoration(
                     hintText: '81234567890',
-                    hintStyle: TextStyle(color: Color(0xFFA0A7A0), fontSize: 12),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    hintStyle: TextStyle(
+                      color: Color(0xFFA0A7A0),
+                      fontSize: 12,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                     border: InputBorder.none,
                   ),
                 ),
@@ -1761,130 +1688,6 @@ class _TiketScreenState extends State<TiketScreen> {
               fontSize: 11,
               fontWeight: FontWeight.bold,
               color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBankCard({
-    required String bankName,
-    required String accountNumber,
-    required String accountName,
-    required Color bankColor,
-    required IconData logoIcon,
-    required Color cardBg,
-    required Color borderLight,
-    required Color textDark,
-    required Color textMuted,
-  }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // ── Header warna bank ──────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: bankColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(logoIcon, color: Colors.white, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Bank $bankName',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Isi: nomor rekening & nama ─────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Nomor Rekening',
-                      style: TextStyle(fontSize: 9, color: textMuted),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      accountNumber,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: textDark,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'a.n. $accountName',
-                      style: TextStyle(fontSize: 10, color: textMuted),
-                    ),
-                  ],
-                ),
-                // ── Tombol salin ───────────────────────────────────
-                GestureDetector(
-                  onTap: () => _copyToClipboard(accountNumber.replaceAll(' ', '')),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: bankColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: bankColor.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.copy, size: 12, color: bankColor),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Salin',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: bankColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],

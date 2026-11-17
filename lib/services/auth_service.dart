@@ -16,12 +16,12 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-        id: json['id'] as int,
-        nama: json['nama'] as String,
-        email: json['email'] as String,
-        authProvider: json['auth_provider'] as String? ?? 'local',
-        avatarUrl: json['avatar_url'] as String?,
-      );
+    id: json['id'] as int,
+    nama: json['nama'] as String,
+    email: json['email'] as String,
+    authProvider: json['auth_provider'] as String? ?? 'local',
+    avatarUrl: json['avatar_url'] as String?,
+  );
 }
 
 class AuthService {
@@ -36,7 +36,8 @@ class AuthService {
   }) async {
     if (nama.trim().isEmpty) throw ApiException('Nama lengkap wajib diisi');
     if (email.trim().isEmpty) throw ApiException('Alamat email wajib diisi');
-    if (password.length < 6) throw ApiException('Kata sandi minimal 6 karakter');
+    if (password.length < 6)
+      throw ApiException('Kata sandi minimal 6 karakter');
 
     final res = await ApiClient.post('/auth/register', {
       'nama': nama.trim(),
@@ -44,8 +45,10 @@ class AuthService {
       'password': password,
     });
 
+    // Karena backend mengirim langsung data user di dalam 'data',
+    // kita parsing langsung tanpa mencari key 'user' lagi.
     final data = res['data'] as Map<String, dynamic>;
-    final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    final user = UserModel.fromJson(data);
     currentUser = user;
     return user;
   }
@@ -63,8 +66,9 @@ class AuthService {
       'password': password,
     });
 
+    // Ubah bagian ini agar langsung membaca dari 'data'
     final data = res['data'] as Map<String, dynamic>;
-    final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    final user = UserModel.fromJson(data);
     currentUser = user;
     return user;
   }
@@ -82,7 +86,9 @@ class AuthService {
     final res = await ApiClient.post('/auth/google', {
       'email': targetEmail.toLowerCase(),
       'nama': targetNama,
-      'avatarUrl': avatarUrl ?? 'https://api.dicebear.com/7.x/avataaars/svg?seed=$targetEmail',
+      'avatarUrl':
+          avatarUrl ??
+          'https://api.dicebear.com/7.x/avataaars/svg?seed=$targetEmail',
     });
 
     final data = res['data'] as Map<String, dynamic>;
@@ -91,15 +97,13 @@ class AuthService {
     return user;
   }
 
-  /// Forgot Password - cek email dan dapatkan reset token
-  static Future<Map<String, dynamic>> forgotPassword({required String email}) async {
+  /// Minta instruksi reset kata sandi untuk alamat email
+  static Future<void> forgotPassword({required String email}) async {
     if (email.trim().isEmpty) throw ApiException('Email wajib diisi');
 
-    final res = await ApiClient.post('/auth/forgot-password', {
+    await ApiClient.post('/auth/forgot-password', {
       'email': email.trim().toLowerCase(),
     });
-
-    return res['data'] as Map<String, dynamic>;
   }
 
   /// Reset Password - gunakan token untuk mereset password
@@ -107,7 +111,8 @@ class AuthService {
     required String token,
     required String newPassword,
   }) async {
-    if (newPassword.length < 6) throw ApiException('Kata sandi minimal 6 karakter');
+    if (newPassword.length < 6)
+      throw ApiException('Kata sandi minimal 6 karakter');
 
     await ApiClient.post('/auth/reset-password', {
       'token': token,

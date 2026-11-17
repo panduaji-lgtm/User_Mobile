@@ -1,10 +1,25 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// Base URL backend Express.js
 /// - Android emulator: http://10.0.2.2:3001
 /// - Web / Desktop (localhost): http://localhost:3001
-const String kBaseUrl = 'http://localhost:3001/api';
+const _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
+const _apiPort = String.fromEnvironment('API_PORT', defaultValue: '3001');
+
+String get kBaseUrl {
+  if (_apiBaseUrlOverride.isNotEmpty) {
+    return _apiBaseUrlOverride.replaceFirst(RegExp(r'/+$'), '');
+  }
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    return 'http://10.0.2.2:$_apiPort/api';
+  }
+  return 'http://localhost:$_apiPort/api';
+}
 
 class ApiException implements Exception {
   final String message;
@@ -25,31 +40,51 @@ class ApiClient {
   static Future<Map<String, dynamic>> get(String path) async {
     try {
       final uri = Uri.parse('$kBaseUrl$path');
-      final res = await http.get(uri, headers: _defaultHeaders)
+      final res = await http
+          .get(uri, headers: _defaultHeaders)
           .timeout(const Duration(seconds: 10));
       return _handleResponse(res);
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Gagal terhubung ke server. Pastikan backend berjalan.');
+      throw ApiException(
+        'Gagal terhubung ke server. Pastikan backend berjalan.',
+      );
     }
   }
 
   static Future<Map<String, dynamic>> post(
-      String path, Map<String, dynamic> body) async {
+    String path,
+    Map<String, dynamic> body, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final uri = Uri.parse('$kBaseUrl$path');
     try {
-      final uri = Uri.parse('$kBaseUrl$path');
       final res = await http
           .post(uri, headers: _defaultHeaders, body: jsonEncode(body))
-          .timeout(const Duration(seconds: 10));
+          .timeout(timeout);
       return _handleResponse(res);
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException('Gagal terhubung ke server. Pastikan backend berjalan.');
+    } on ApiException {
+      rethrow;
+    } on TimeoutException catch (error) {
+      debugPrint('POST $uri timed out after ${timeout.inSeconds}s: $error');
+      throw ApiException(
+        'Waktu tunggu habis saat menghubungi backend. Periksa koneksi lalu coba lagi.',
+      );
+    } on http.ClientException catch (error) {
+      debugPrint('POST $uri failed: $error');
+      throw ApiException(
+        'Tidak dapat mengakses backend di $uri. Periksa server, alamat API, dan CORS jika menggunakan Flutter Web.',
+      );
+    } catch (error) {
+      debugPrint('POST $uri failed: $error');
+      throw ApiException('Gagal memproses respons dari server.');
     }
   }
 
   static Future<Map<String, dynamic>> put(
-      String path, Map<String, dynamic> body) async {
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     try {
       final uri = Uri.parse('$kBaseUrl$path');
       final res = await http
@@ -58,7 +93,9 @@ class ApiClient {
       return _handleResponse(res);
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Gagal terhubung ke server. Pastikan backend berjalan.');
+      throw ApiException(
+        'Gagal terhubung ke server. Pastikan backend berjalan.',
+      );
     }
   }
 
