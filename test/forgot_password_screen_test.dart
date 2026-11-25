@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:app/screens/auth/login_screen.dart';
+import 'package:app/features/auth/presentation/views/login_screen.dart';
 
 void main() {
   testWidgets(
