@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:app/data/services/auth_service.dart';
+
 /// Base URL backend Express.js
 /// - Android emulator: http://10.0.2.2:3001
 /// - Web / Desktop (localhost): http://localhost:3001
@@ -37,11 +39,20 @@ class ApiClient {
     'Accept': 'application/json',
   };
 
+  static Map<String, String> get _headers {
+    final headers = Map<String, String>.from(_defaultHeaders);
+    final token = AuthService.token;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
   static Future<Map<String, dynamic>> get(String path) async {
     try {
       final uri = Uri.parse('$kBaseUrl$path');
       final res = await http
-          .get(uri, headers: _defaultHeaders)
+          .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 10));
       return _handleResponse(res);
     } catch (e) {
@@ -60,7 +71,7 @@ class ApiClient {
     final uri = Uri.parse('$kBaseUrl$path');
     try {
       final res = await http
-          .post(uri, headers: _defaultHeaders, body: jsonEncode(body))
+          .post(uri, headers: _headers, body: jsonEncode(body))
           .timeout(timeout);
       return _handleResponse(res);
     } on ApiException {
@@ -88,7 +99,22 @@ class ApiClient {
     try {
       final uri = Uri.parse('$kBaseUrl$path');
       final res = await http
-          .put(uri, headers: _defaultHeaders, body: jsonEncode(body))
+          .put(uri, headers: _headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 10));
+      return _handleResponse(res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        'Gagal terhubung ke server. Pastikan backend berjalan.',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> delete(String path) async {
+    try {
+      final uri = Uri.parse('$kBaseUrl$path');
+      final res = await http
+          .delete(uri, headers: _headers)
           .timeout(const Duration(seconds: 10));
       return _handleResponse(res);
     } catch (e) {
@@ -100,12 +126,33 @@ class ApiClient {
   }
 
   static Map<String, dynamic> _handleResponse(http.Response res) {
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    Map<String, dynamic> data = <String, dynamic>{};
+    final rawBody = res.body.trim();
+    if (rawBody.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawBody);
+        if (decoded is Map<String, dynamic>) {
+          data = decoded;
+        }
+      } catch (_) {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          throw ApiException(
+            'Format respons server tidak valid.',
+            statusCode: res.statusCode,
+          );
+        }
+      }
+    }
+
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return data;
     }
+
+    final serverMessage = data['message']?.toString().trim();
     throw ApiException(
-      data['message'] ?? 'Terjadi kesalahan (${res.statusCode})',
+      (serverMessage != null && serverMessage.isNotEmpty)
+          ? serverMessage
+          : 'Terjadi kesalahan server (${res.statusCode}).',
       statusCode: res.statusCode,
     );
   }

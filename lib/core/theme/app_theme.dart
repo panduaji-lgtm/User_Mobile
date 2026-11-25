@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Colors dari Figma Museum Brawijaya
@@ -18,6 +17,9 @@ class AppTheme {
   static const Color successColor = Color(0xFF388E3C);
 
   static ThemeData get theme {
+    final baseTextTheme = ThemeData.light(useMaterial3: true).textTheme
+        .apply(fontFamily: 'PlayfairDisplay');
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
@@ -25,31 +27,48 @@ class AppTheme {
         brightness: Brightness.light,
       ),
       scaffoldBackgroundColor: creamBg,
-      textTheme: GoogleFonts.playfairDisplayTextTheme().copyWith(
-        displayLarge: GoogleFonts.playfairDisplay(
+      textTheme: baseTextTheme.copyWith(
+        displayLarge: const TextStyle(
+          fontFamily: 'PlayfairDisplay',
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: textDark,
         ),
-        displayMedium: GoogleFonts.playfairDisplay(
+        displayMedium: const TextStyle(
+          fontFamily: 'PlayfairDisplay',
           fontSize: 26,
           fontWeight: FontWeight.bold,
           color: textDark,
         ),
-        headlineLarge: GoogleFonts.playfairDisplay(
+        headlineLarge: const TextStyle(
+          fontFamily: 'PlayfairDisplay',
           fontSize: 22,
           fontWeight: FontWeight.bold,
           color: textDark,
         ),
-        headlineMedium: GoogleFonts.playfairDisplay(
+        headlineMedium: const TextStyle(
+          fontFamily: 'PlayfairDisplay',
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: textDark,
         ),
-        bodyLarge: GoogleFonts.lato(fontSize: 16, color: textDark),
-        bodyMedium: GoogleFonts.lato(fontSize: 14, color: textDark),
-        bodySmall: GoogleFonts.lato(fontSize: 12, color: textGrey),
-        labelLarge: GoogleFonts.lato(
+        bodyLarge: const TextStyle(
+          fontFamily: 'Lato',
+          fontSize: 16,
+          color: textDark,
+        ),
+        bodyMedium: const TextStyle(
+          fontFamily: 'Lato',
+          fontSize: 14,
+          color: textDark,
+        ),
+        bodySmall: const TextStyle(
+          fontFamily: 'Lato',
+          fontSize: 12,
+          color: textGrey,
+        ),
+        labelLarge: const TextStyle(
+          fontFamily: 'Lato',
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: textDark,
@@ -60,10 +79,9 @@ class AppTheme {
           backgroundColor: primaryGreen,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          textStyle: GoogleFonts.lato(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: const TextStyle(
+            fontFamily: 'Lato',
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -74,9 +92,7 @@ class AppTheme {
           foregroundColor: primaryGreen,
           side: const BorderSide(color: primaryGreen),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -98,15 +114,27 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: errorColor),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        hintStyle: GoogleFonts.lato(color: textLight, fontSize: 14),
-        labelStyle: GoogleFonts.lato(color: textGrey, fontSize: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        hintStyle: const TextStyle(
+          fontFamily: 'Lato',
+          color: textLight,
+          fontSize: 14,
+        ),
+        labelStyle: const TextStyle(
+          fontFamily: 'Lato',
+          color: textGrey,
+          fontSize: 14,
+        ),
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: warmWhite,
         elevation: 0,
-        iconTheme: const IconThemeData(color: textDark),
-        titleTextStyle: GoogleFonts.playfairDisplay(
+        iconTheme: IconThemeData(color: textDark),
+        titleTextStyle: TextStyle(
+          fontFamily: 'PlayfairDisplay',
           fontSize: 18,
           fontWeight: FontWeight.bold,
           color: textDark,
@@ -116,7 +144,10 @@ class AppTheme {
         backgroundColor: warmWhite,
         selectedItemColor: primaryGreen,
         unselectedItemColor: textGrey,
-        selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        selectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
         type: BottomNavigationBarType.fixed,
       ),
       cardTheme: CardThemeData(
