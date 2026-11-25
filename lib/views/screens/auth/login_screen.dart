@@ -1,18 +1,9 @@
-<<<<<<<< HEAD:lib/features/auth/presentation/views/login_screen.dart
-﻿import 'package:flutter/material.dart';
-import 'package:app/features/navigation/presentation/views/main_navigation.dart';
-import 'package:app/features/auth/presentation/views/forgot_password_screen.dart';
-import 'package:app/features/auth/presentation/views/register_screen.dart';
-import 'package:app/features/auth/presentation/viewmodels/auth_viewmodel.dart';
-import 'package:app/core/widgets/app_loading_overlay.dart';
-========
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/models/auth_models.dart';
 import 'package:app/viewmodels/auth_viewmodel.dart';
 import 'package:app/views/widgets/app_loading_overlay.dart';
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/auth/login_screen.dart
 
 class LoginScreen extends StatefulWidget {
   final AuthViewModel? viewModel;
@@ -26,20 +17,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-<<<<<<<< HEAD:lib/features/auth/presentation/views/login_screen.dart
-  final _viewModel = AuthViewModel();
-  bool _rememberMe = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _viewModel.dispose();
-    super.dispose();
-  }
-
-  bool get _isLoading => _viewModel.isLoading;
-========
   late final AuthViewModel _viewModel;
   late final bool _ownsViewModel;
   bool _rememberMe = false;
@@ -65,18 +42,11 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     }
   }
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/auth/login_screen.dart
 
   Future<void> _handleLogin() async {
-    final success = await _viewModel.login(
-      _emailController.text,
-      _passwordController.text,
-      rememberMe: _rememberMe,
-    );
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
 
-<<<<<<<< HEAD:lib/features/auth/presentation/views/login_screen.dart
-    if (!mounted) return;
-========
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -121,23 +91,17 @@ class _LoginScreenState extends State<LoginScreen> {
           duration: const Duration(seconds: 1),
         ),
       );
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/auth/login_screen.dart
 
-    if (success) {
       AppLoadingOverlay.navigateWithLoading(
         context,
         targetRoute: '/',
         replace: true,
       );
-<<<<<<<< HEAD:lib/features/auth/presentation/views/login_screen.dart
-    } else {
-========
     } catch (e) {
       if (!mounted) return;
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/auth/login_screen.dart
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_viewModel.errorMessage ?? 'Gagal masuk akun.'),
+          content: Text(e.toString().replaceAll('Exception: ', '')),
           backgroundColor: Colors.red,
         ),
       );
@@ -145,25 +109,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleGoogleLogin() async {
-<<<<<<<< HEAD:lib/features/auth/presentation/views/login_screen.dart
-    final email = _emailController.text.trim().isNotEmpty
-        ? _emailController.text.trim()
-        : 'pengunjung.google@gmail.com';
-    final success = await _viewModel.loginWithGoogle(email, rememberMe: _rememberMe);
-    if (!mounted) return;
-
-    if (success) {
-      AppLoadingOverlay.navigateWithLoading(
-        context,
-        targetScreen: const MainNavigation(),
-        replace: true,
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_viewModel.errorMessage ?? 'Gagal masuk dengan Google'),
-          backgroundColor: Colors.red,
-========
     if (_isBusy) return;
     try {
       final user = await _viewModel.loginWithGoogle();
@@ -214,7 +159,6 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Text(e.toString().replaceFirst('Exception: ', '')),
           backgroundColor: Colors.red.shade700,
           duration: const Duration(seconds: 4),
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/auth/login_screen.dart
         ),
       );
     }
@@ -225,8 +169,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
-<<<<<<<< HEAD:lib/features/auth/presentation/views/login_screen.dart
-========
   void dispose() {
     if (_ownsViewModel) {
       _viewModel.dispose();
@@ -237,7 +179,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/auth/login_screen.dart
   Widget build(BuildContext context) {
     // Definisi Warna Sesuai Desain UI
     const Color bgCream = Color(0xFFF7F3EA);

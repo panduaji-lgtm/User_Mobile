@@ -1,16 +1,9 @@
-<<<<<<<< HEAD:lib/features/auth/presentation/views/register_screen.dart
-﻿import 'package:flutter/material.dart';
-import 'package:app/features/auth/data/repositories/auth_service.dart';
-import 'package:app/core/widgets/app_loading_overlay.dart';
-import 'package:app/features/navigation/presentation/views/main_navigation.dart';
-========
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/models/auth_models.dart';
 import 'package:app/viewmodels/auth_viewmodel.dart';
 import 'package:app/views/widgets/app_loading_overlay.dart';
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/auth/register_screen.dart
 
 class RegisterScreen extends StatefulWidget {
   final AuthViewModel? viewModel;

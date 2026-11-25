@@ -1,11 +1,6 @@
-<<<<<<<< HEAD:lib/features/auth/presentation/views/reset_password_screen.dart
-﻿import 'package:flutter/material.dart';
-import 'package:app/features/auth/data/repositories/auth_service.dart';
-========
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/viewmodels/auth_viewmodel.dart';
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/auth/reset_password_screen.dart
 
 class ResetPasswordScreen extends StatefulWidget {
   final String token;

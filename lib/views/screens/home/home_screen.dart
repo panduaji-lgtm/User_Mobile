@@ -1,16 +1,7 @@
-<<<<<<<< HEAD:lib/features/home/presentation/views/home_screen.dart
-﻿import 'package:flutter/material.dart';
-
-import 'package:app/features/auth/presentation/views/edit_profile_screen.dart';
-import 'package:app/features/auth/presentation/views/login_screen.dart';
-import 'package:app/features/kuis/presentation/views/artifact_match_screen.dart';
-import 'package:app/features/auth/data/repositories/auth_service.dart';
-========
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:app/viewmodels/auth_viewmodel.dart';
->>>>>>>> 0a1ba4f3b1715a24578dc0df51e399fd51460d94:lib/views/screens/home/home_screen.dart
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
