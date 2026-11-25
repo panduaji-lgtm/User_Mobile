@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
-import 'screens/auth/login_screen.dart';
-import 'widgets/mobile_frame.dart';
 
-void main() {
+import 'package:app/core/router/app_router.dart';
+import 'package:app/data/services/auth_service.dart';
+import 'package:app/views/widgets/mobile_frame.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Pulihkan session login dari SharedPreferences sebelum UI dirender
+  await AuthService.init();
   runApp(const MyApp());
 }
 
@@ -11,17 +16,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Museum Brawijaya',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue.shade800),
         useMaterial3: true,
       ),
+      routerConfig: AppRouter.router,
       builder: (context, child) => MobileFrame(
         child: child ?? const SizedBox.shrink(),
       ),
-      home: const LoginScreen(),
     );
   }
 }
