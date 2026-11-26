@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:app/data/services/koleksi_service.dart';
-import 'package:app/data/services/ulasan_service.dart';
-import 'package:app/views/screens/koleksi/detail_generic_koleksi_screen.dart';
-import 'package:app/views/screens/koleksi/koleksi_screen.dart';
-import 'package:app/views/screens/tentang/tentang_screen.dart';
+import 'package:app/features/koleksi/data/repositories/koleksi_service.dart';
+import 'package:app/features/tentang/data/repositories/ulasan_service.dart';
+import 'package:app/features/koleksi/presentation/views/detail_generic_koleksi_screen.dart';
+import 'package:app/features/koleksi/presentation/views/koleksi_screen.dart';
+import 'package:app/features/tentang/presentation/views/tentang_screen.dart';
 
 void main() {
   group('Model JSON parsing (null-safe)', () {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:app/core/router/app_router.dart';
-import 'package:app/data/services/auth_service.dart';
-import 'package:app/views/widgets/mobile_frame.dart';
+import 'package:app/features/auth/data/repositories/auth_service.dart';
+import 'package:app/core/widgets/mobile_frame.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

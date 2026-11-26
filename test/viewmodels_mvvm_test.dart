@@ -4,20 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:app/data/repositories/ai_chat_repository.dart';
-import 'package:app/data/repositories/koleksi_repository.dart';
-import 'package:app/data/repositories/tiket_repository.dart';
-import 'package:app/data/repositories/ulasan_repository.dart';
-import 'package:app/data/services/auth_service.dart';
-import 'package:app/models/models.dart';
-import 'package:app/viewmodels/ai_chat_viewmodel.dart';
-import 'package:app/viewmodels/auth_viewmodel.dart';
-import 'package:app/viewmodels/koleksi_viewmodel.dart';
-import 'package:app/viewmodels/tiket_viewmodel.dart';
-import 'package:app/viewmodels/ulasan_viewmodel.dart';
-import 'package:app/views/screens/ai/museum_ai_chat_screen.dart';
-import 'package:app/views/screens/koleksi/koleksi_screen.dart';
-import 'package:app/views/screens/tiket/tiket_screen.dart';
+import 'package:app/features/ai_chat/data/repositories/ai_chat_repository.dart';
+import 'package:app/features/koleksi/data/repositories/koleksi_repository.dart';
+import 'package:app/features/tiket/data/repositories/tiket_repository.dart';
+import 'package:app/features/tentang/data/repositories/ulasan_repository.dart';
+import 'package:app/features/auth/data/repositories/auth_service.dart';
+import 'package:app/core/models/models.dart';
+import 'package:app/features/ai_chat/presentation/viewmodels/ai_chat_viewmodel.dart';
+import 'package:app/features/auth/presentation/viewmodels/auth_viewmodel.dart';
+import 'package:app/features/koleksi/presentation/viewmodels/koleksi_viewmodel.dart';
+import 'package:app/features/tiket/presentation/viewmodels/tiket_viewmodel.dart';
+import 'package:app/features/tentang/presentation/viewmodels/ulasan_viewmodel.dart';
+import 'package:app/features/ai_chat/presentation/views/museum_ai_chat_screen.dart';
+import 'package:app/features/koleksi/presentation/views/koleksi_screen.dart';
+import 'package:app/features/tiket/presentation/views/tiket_screen.dart';
 
 class _FakeKoleksiRepository implements KoleksiRepository {
   @override
@@ -141,6 +141,7 @@ class _FakeTiketRepository implements TiketRepository {
     required String visitDate,
     required String paymentMethod,
     int isMancanegara = 0,
+    Map<int, int> extraCategories = const {},
   }) async =>
       _booking;
 
@@ -162,6 +163,9 @@ class _FakeTiketRepository implements TiketRepository {
 
   @override
   Future<TicketBooking> getBookingById(String id) async => _booking;
+
+  @override
+  Future<JamOperasional> getJamOperasional() async => const JamOperasional();
 
   @override
   Uri getTicketPdfUri(String bookingId) => Uri.parse(

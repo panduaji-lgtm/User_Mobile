@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:app/data/services/auth_service.dart';
-import 'package:app/views/screens/auth/login_screen.dart';
-import 'package:app/views/screens/auth/register_screen.dart';
+import 'package:app/features/auth/data/repositories/auth_service.dart';
+import 'package:app/features/auth/presentation/views/login_screen.dart';
+import 'package:app/features/auth/presentation/views/register_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

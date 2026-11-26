@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:app/views/screens/auth/forgot_password_screen.dart';
-import 'package:app/views/screens/auth/login_screen.dart';
-import 'package:app/views/screens/auth/reset_password_screen.dart';
+import 'package:app/features/auth/presentation/views/forgot_password_screen.dart';
+import 'package:app/features/auth/presentation/views/login_screen.dart';
+import 'package:app/features/auth/presentation/views/reset_password_screen.dart';
 
 void main() {
   testWidgets(

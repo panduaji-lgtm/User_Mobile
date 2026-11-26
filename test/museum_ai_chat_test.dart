@@ -6,9 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:app/core/network/api_client.dart';
-import 'package:app/data/services/ai_chat_service.dart';
-import 'package:app/data/services/auth_service.dart';
-import 'package:app/views/screens/ai/museum_ai_chat_screen.dart';
+import 'package:app/features/ai_chat/data/repositories/ai_chat_service.dart';
+import 'package:app/features/auth/data/repositories/auth_service.dart';
+import 'package:app/features/ai_chat/presentation/views/museum_ai_chat_screen.dart';
 
 // 1x1 PNG transparan valid untuk simulasi upload gambar
 final Uint8List _samplePngBytes = base64Decode(

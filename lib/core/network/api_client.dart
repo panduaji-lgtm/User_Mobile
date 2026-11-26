@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:app/data/services/auth_service.dart';
+import 'package:app/features/auth/data/repositories/auth_service.dart';
 
 /// Base URL backend Express.js
 /// - Android emulator: http://10.0.2.2:3001

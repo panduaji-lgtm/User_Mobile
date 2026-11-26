@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:app/data/services/auth_service.dart';
-import 'package:app/views/screens/ai/museum_ai_chat_screen.dart';
-import 'package:app/views/screens/auth/forgot_password_screen.dart';
-import 'package:app/views/screens/auth/login_screen.dart';
-import 'package:app/views/screens/auth/register_screen.dart';
-import 'package:app/views/screens/auth/reset_password_screen.dart';
-import 'package:app/views/screens/main_navigation.dart';
-import 'package:app/views/screens/profile/edit_profile_screen.dart';
+import 'package:app/features/auth/data/repositories/auth_service.dart';
+import 'package:app/features/ai_chat/presentation/views/museum_ai_chat_screen.dart';
+import 'package:app/features/auth/presentation/views/forgot_password_screen.dart';
+import 'package:app/features/auth/presentation/views/login_screen.dart';
+import 'package:app/features/auth/presentation/views/register_screen.dart';
+import 'package:app/features/auth/presentation/views/reset_password_screen.dart';
+import 'package:app/features/home/presentation/views/main_navigation.dart';
+import 'package:app/features/profile/presentation/views/edit_profile_screen.dart';
 
 /// Konfigurasi Rute Aplikasi dan Auth Guard
 class AppRouter {

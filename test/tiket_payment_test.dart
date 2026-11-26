@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:app/data/services/tiket_service.dart';
-import 'package:app/views/screens/tiket/tiket_screen.dart';
+import 'package:app/features/tiket/data/repositories/tiket_service.dart';
+import 'package:app/features/tiket/presentation/views/tiket_screen.dart';
 
 void main() {
   group('TiketService JSON parsing (null-safe)', () {

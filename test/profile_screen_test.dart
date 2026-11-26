@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:app/data/services/auth_service.dart';
-import 'package:app/views/screens/profile/edit_profile_screen.dart';
+import 'package:app/features/auth/data/repositories/auth_service.dart';
+import 'package:app/features/profile/presentation/views/edit_profile_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
