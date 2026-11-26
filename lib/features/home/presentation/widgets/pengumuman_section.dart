@@ -31,11 +31,6 @@ class _PengumumanSectionState extends State<PengumumanSection> {
   Future<List<Pengumuman>> _load() =>
       (widget.loader ?? InformasiService.getPengumumanAktif)();
 
-  Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future.catchError((_) => <Pengumuman>[]);
-  }
-
   ({Color bg, Color fg, IconData icon}) _style(Pengumuman p) {
     if (p.isAgenda) {
       return (
@@ -196,11 +191,6 @@ class _PengumumanSectionState extends State<PengumumanSection> {
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: 'Muat ulang',
-                onPressed: _refresh,
-                icon: const Icon(Icons.refresh_rounded, color: _darkGreen),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -228,7 +218,7 @@ class _PengumumanSectionState extends State<PengumumanSection> {
               if (snapshot.hasError) {
                 return _buildEmpty(
                   Icons.cloud_off_rounded,
-                  'Gagal memuat pengumuman. Ketuk muat ulang untuk mencoba lagi.',
+                  'Gagal memuat pengumuman. Silakan coba lagi nanti.',
                 );
               }
               final all = snapshot.data ?? const <Pengumuman>[];

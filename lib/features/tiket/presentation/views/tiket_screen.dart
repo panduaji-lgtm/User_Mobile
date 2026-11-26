@@ -94,6 +94,9 @@ class _TiketScreenState extends State<TiketScreen> {
   int _priceDewasa = 10000;
   int _pricePelajar = 5000;
   int _priceWna = 25000;
+  bool _hasDewasa = true;
+  bool _hasPelajar = true;
+  bool _hasWna = true;
 
   // Kategori tambahan yang dibuat admin (selain Dewasa / Pelajar / WNA)
   List<TiketCategory> _extraCategories = const [];
@@ -237,15 +240,27 @@ class _TiketScreenState extends State<TiketScreen> {
             );
       if (!mounted) return;
       setState(() {
+        var foundDewasa = false;
+        var foundPelajar = false;
+        var foundWna = false;
         for (final cat in cats) {
           if (cat.isMancanegara) {
+            foundWna = true;
             _priceWna = cat.price;
           } else if (cat.isPelajar) {
+            foundPelajar = true;
             _pricePelajar = cat.price;
           } else if (cat.isDewasa) {
+            foundDewasa = true;
             _priceDewasa = cat.price;
           }
         }
+        _hasDewasa = foundDewasa;
+        _hasPelajar = foundPelajar;
+        _hasWna = foundWna;
+        if (!_hasDewasa) _qtyDewasa = 0;
+        if (!_hasPelajar) _qtyPelajar = 0;
+        if (!_hasWna) _qtyWna = 0;
         _extraCategories = cats.where((c) => c.isExtra).toList();
         final validIds = _extraCategories.map((c) => c.id).toSet();
         _qtyExtra.removeWhere((id, _) => !validIds.contains(id));
@@ -1275,45 +1290,52 @@ class _TiketScreenState extends State<TiketScreen> {
                   ),
                 )
               else if (_isMancanegara) ...[
-                _buildQtyRow(
-                  'Tiket Wisatawan Mancanegara (WNA)',
-                  '${_formatRupiah(_priceWna)}/person',
-                  _qtyWna,
-                  (val) => setState(() => _qtyWna = val),
-                  darkGreen,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Kategori khusus wisatawan dari luar negeri.',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: textMuted,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ] else ...[
-                _buildQtyRow(
-                  'Tiket Dewasa / Umum (WNI)',
-                  '${_formatRupiah(_priceDewasa)}/orang',
-                  _qtyDewasa,
-                  (val) => setState(() => _qtyDewasa = val),
-                  darkGreen,
-                ),
-                Divider(height: 20, color: borderLight),
-                _buildQtyRow(
-                  'Tiket Pelajar / Mahasiswa (WNI)',
-                  '${_formatRupiah(_pricePelajar)}/orang',
-                  _qtyPelajar,
-                  (val) => setState(() => _qtyPelajar = val),
-                  darkGreen,
-                ),
-                for (final cat in _extraCategories) ...[
-                  Divider(height: 20, color: borderLight),
+                if (_hasWna) ...[
                   _buildQtyRow(
-                    cat.title,
-                    '${_formatRupiah(cat.price)}/orang • ${cat.badge}',
-                    _qtyExtra[cat.id] ?? 0,
-                    (val) => setState(() => _qtyExtra[cat.id] = val),
+                    'Tiket Wisatawan Mancanegara (WNA)',
+                    '${_formatRupiah(_priceWna)}/person',
+                    _qtyWna,
+                    (val) => setState(() => _qtyWna = val),
+                    darkGreen,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Kategori khusus wisatawan dari luar negeri.',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ] else ...[
+                if (_hasDewasa) ...[
+                  _buildQtyRow(
+                    'Tiket Dewasa / Umum (WNI)',
+                    '${_formatRupiah(_priceDewasa)}/orang',
+                    _qtyDewasa,
+                    (val) => setState(() => _qtyDewasa = val),
+                    darkGreen,
+                  ),
+                ],
+                if (_hasPelajar) ...[
+                  if (_hasDewasa) Divider(height: 20, color: borderLight),
+                  _buildQtyRow(
+                    'Tiket Pelajar / Mahasiswa (WNI)',
+                    '${_formatRupiah(_pricePelajar)}/orang',
+                    _qtyPelajar,
+                    (val) => setState(() => _qtyPelajar = val),
+                    darkGreen,
+                  ),
+                ],
+                for (var i = 0; i < _extraCategories.length; i++) ...[
+                  if (_hasDewasa || _hasPelajar || i > 0)
+                    Divider(height: 20, color: borderLight),
+                  _buildQtyRow(
+                    _extraCategories[i].title,
+                    '${_formatRupiah(_extraCategories[i].price)}/orang • ${_extraCategories[i].badge}',
+                    _qtyExtra[_extraCategories[i].id] ?? 0,
+                    (val) => setState(() => _qtyExtra[_extraCategories[i].id] = val),
                     darkGreen,
                   ),
                 ],

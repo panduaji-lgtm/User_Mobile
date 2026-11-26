@@ -554,6 +554,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 28),
 
+                // Pengumuman & Agenda Pameran (dikelola admin, dari database)
+                const PengumumanSection(),
+
+                const SizedBox(height: 28),
+
                 // Card Sejarah Singkat
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -656,11 +661,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 28),
-
-                // Pengumuman & Agenda Pameran (dikelola admin, dari database)
-                const PengumumanSection(),
 
                 const SizedBox(height: 40),
               ],
